@@ -1,97 +1,105 @@
-import { useState, useEffect } from "react";
-import { View, FlatList, TextInput, StyleSheet, ActivityIndicator, Text } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  Dimensions,
+} from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import * as Location from "expo-location";
-import { supabase } from "../../src/lib/supabase";
+import { GreenScreen } from "../../src/components/GreenScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { StoreSelector } from "../../src/components/StoreSelector";
-import { GreenScreen } from "../../src/components/GreenScreen";
-import { Search } from "lucide-react-native";
-import { BlurView } from "expo-blur";
+import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
+import { router } from "expo-router";
+import { Bell, TrendingUp } from "lucide-react-native";
+
+const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const location = await Location.getCurrentPositionAsync({});
-          setUserLocation({
-            lat: location.coords.latitude,
-            lng: location.coords.longitude,
-          });
-        }
-      } catch (err) {
-        console.warn("Location error:", err);
-      }
-    })();
-  }, []);
-
-  const { data: products, isLoading, error } = useQuery({
-    queryKey: ["products", selectedStore, search],
+  const {
+    data: products,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["home-products", selectedStore],
     queryFn: async () => {
-      let q = supabase
+      let query = supabase
         .from("store_products")
-        .select("*, product:products(*), store:stores(name)")
-        .eq("is_available", true);
-      
-      if (selectedStore) q = q.eq("store_id", selectedStore);
-      if (search) q = q.ilike("product.name", `%${search}%`);
-      
-      const { data, error } = await q;
-      if (error) {
-        console.error("Products query error:", error);
-        throw error;
+        .select(`*, product:products(*, category:categories(name)), store:stores(name, logo_url)`)
+        .eq("is_available", true)
+        .gt("stock_qty", 0);
+
+      if (selectedStore) {
+        query = query.eq("store_id", selectedStore);
       }
-      return data || [];
+
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   return (
     <GreenScreen>
-      <StoreSelector 
-        onSelect={setSelectedStore} 
-        selectedStore={selectedStore}
-        userLocation={userLocation}
-      />
-
-      <View style={styles.searchContainer}>
-        <BlurView intensity={30} tint="light" style={styles.searchBlur}>
-          <View style={styles.searchInner}>
-            <Search size={16} color="rgba(255,255,255,0.65)" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search fresh products..."
-              placeholderTextColor="rgba(255,255,255,0.55)"
-              value={search}
-              onChangeText={setSearch}
-            />
-          </View>
-        </BlurView>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>FreshCart</Text>
+          <Text style={styles.subGreeting}>Fresh groceries, delivered fast</Text>
+        </View>
+        <TouchableOpacity style={styles.notifBtn} onPress={() => router.push("/(customer)/orders")}>
+          <Bell size={20} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {error && (
-        <Text style={{color: 'red', textAlign: 'center', marginTop: 20}}>
-          Error loading products: {error.message}
+      {/* Store Selector */}
+      <StoreSelector
+        onSelect={setSelectedStore}
+        selectedStore={selectedStore}
+      />
+
+      {/* Featured Section */}
+      <View style={styles.sectionHeader}>
+        <TrendingUp size={18} color={colors.accent} />
+        <Text style={styles.sectionTitle}>
+          {selectedStore ? "Store Products" : "Featured Products"}
         </Text>
-      )}
+      </View>
 
       {isLoading ? (
-        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+      ) : error ? (
+        <Text style={styles.errorText}>Failed to load products</Text>
       ) : (
         <FlatList
           data={products}
-          numColumns={2}
           keyExtractor={(item) => item.id}
+          numColumns={2}
           renderItem={({ item }) => <ProductCard item={item} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ padding: 12, paddingBottom: 200 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No products found.</Text>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No products available</Text>
+              <Text style={styles.emptySub}>Check back later for fresh items</Text>
+            </View>
           }
         />
       )}
@@ -100,37 +108,45 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchContainer: {
-    marginHorizontal: 16,
-    marginVertical: 12,
-    borderRadius: 16,
-    overflow: "hidden",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    paddingBottom: 12,
+  },
+  greeting: { color: "#fff", fontSize: 28, fontWeight: "800" },
+  subGreeting: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  notifBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
+    borderColor: colors.glassBorder,
   },
-  searchBlur: {
-    overflow: "hidden",
-  },
-  searchInner: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    gap: 12,
+    gap: 8,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#fff",
-  },
-  listContent: { 
-    paddingHorizontal: 8, 
-    paddingBottom: 100,
-  },
-  emptyText: {
-    color: colors.textMuted,
+  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  errorText: {
+    color: "#ef5350",
     textAlign: "center",
     marginTop: 40,
-  }
+    fontSize: 14,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+  },
+  emptyText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  emptySub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
 });

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,16 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Animated,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { colors } from "../constants/colors";
-import { Store, MapPin, Navigation, X } from "lucide-react-native";
+import { Store, MapPin, Navigation, X, ChevronRight, Star } from "lucide-react-native";
 import { BlurView } from "expo-blur";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = 280;
+const CARD_WIDTH = 260;
 const CARD_SPACING = 12;
 
 interface StoreItem {
@@ -26,6 +27,8 @@ interface StoreItem {
   logo_url: string | null;
   is_active: boolean;
   distance?: number;
+  description?: string;
+  rating?: number;
 }
 
 interface StoreSelectorProps {
@@ -36,13 +39,15 @@ interface StoreSelectorProps {
 
 export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSelectorProps) {
   const scrollRef = useRef<ScrollView>(null);
+  const [pressedCard, setPressedCard] = useState<string | null>(null);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const { data: stores, isLoading, error: queryError } = useQuery({
-    queryKey: ["stores", userLocation],
+    queryKey: ["stores", userLocation?.lat, userLocation?.lng],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stores")
-        .select("id, name, address, logo_url, is_active, lat, lng")
+        .select("id, name, address, logo_url, is_active, latitude, longitude, description")
         .eq("is_active", true)
         .order("name");
 
@@ -53,15 +58,17 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
 
       const storesWithDistance = (data || []).map((store: any) => {
         let distance: number | undefined;
-        if (userLocation && store.lat && store.lng) {
+        if (userLocation && store.latitude && store.longitude) {
           distance = calculateDistance(
             userLocation.lat,
             userLocation.lng,
-            store.lat,
-            store.lng
+            store.latitude,
+            store.longitude
           );
         }
-        return { ...store, distance };
+        // Mock rating for demo - in production fetch from reviews
+        const rating = 4 + Math.random();
+        return { ...store, distance, rating };
       });
 
       if (userLocation) {
@@ -70,15 +77,31 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
 
       return storesWithDistance;
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
-
-
 
   const selectedStoreData = stores?.find((s: StoreItem) => s.id === selectedStore);
 
-  const handleSelect = (storeId: string) => {
-    onSelect(storeId === selectedStore ? null : storeId);
-  };
+  const handleSelect = useCallback((storeId: string | null) => {
+    // Animate selection
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    onSelect(storeId);
+  }, [onSelect, scaleAnim]);
+
+  const handlePressIn = (id: string) => setPressedCard(id);
+  const handlePressOut = () => setPressedCard(null);
 
   if (isLoading) {
     return (
@@ -91,8 +114,8 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
 
   if (queryError) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: "rgba(255,0,0,0.1)", borderRadius: 12, marginHorizontal: 16 }]}>
-        <Text style={{ color: "red", fontSize: 13, textAlign: "center" }}>
+      <View style={[styles.loadingContainer, styles.errorContainer]}>
+        <Text style={styles.errorText}>
           Failed to load stores: {(queryError as any).message}
         </Text>
       </View>
@@ -101,19 +124,30 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
 
   return (
     <View style={styles.container}>
+      {/* Header with animated count */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Store size={18} color={colors.accent} />
+          <View style={styles.headerIcon}>
+            <Store size={16} color={colors.accent} />
+          </View>
           <Text style={styles.headerTitle}>Nearby Stores</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{(stores?.length || 0) + 1}</Text>
+          </View>
         </View>
         {selectedStore && (
-          <TouchableOpacity style={styles.clearBtn} onPress={() => onSelect(null)}>
+          <TouchableOpacity 
+            style={styles.clearBtn} 
+            onPress={() => handleSelect(null)}
+            activeOpacity={0.7}
+          >
             <X size={14} color={colors.textMuted} />
             <Text style={styles.clearText}>Clear</Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {/* Horizontal Scroll Cards */}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -123,37 +157,80 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
         snapToInterval={CARD_WIDTH + CARD_SPACING}
         snapToAlignment="start"
       >
+        {/* All Stores Card */}
         <TouchableOpacity
-          style={[styles.card, !selectedStore && styles.cardActive]}
-          onPress={() => onSelect(null)}
-          activeOpacity={0.9}
+          style={[
+            styles.card,
+            !selectedStore && styles.cardActive,
+            pressedCard === "all" && styles.cardPressed,
+          ]}
+          onPress={() => handleSelect(null)}
+          onPressIn={() => handlePressIn("all")}
+          onPressOut={handlePressOut}
+          activeOpacity={0.85}
         >
-          <BlurView intensity={!selectedStore ? 60 : 40} tint="light" style={styles.cardBlur}>
-            <View style={[styles.cardInner, !selectedStore && styles.cardInnerActive]}>
-              <View style={styles.allStoresIcon}>
+          <BlurView intensity={!selectedStore ? 50 : 30} tint="light" style={styles.cardBlur}>
+            <View style={[
+              styles.cardInner,
+              !selectedStore && styles.cardInnerActive
+            ]}>
+              <View style={[
+                styles.allStoresIcon,
+                !selectedStore && styles.allStoresIconActive
+              ]}>
                 <Store size={28} color={!selectedStore ? colors.accent : colors.textMuted} />
               </View>
-              <Text style={[styles.cardName, !selectedStore && styles.cardNameActive]}>
-                All Stores
-              </Text>
-              <Text style={styles.cardMeta}>Browse everything</Text>
-              {!selectedStore && <View style={styles.activeIndicator} />}
+              <View style={styles.cardContent}>
+                <Text style={[
+                  styles.cardName,
+                  !selectedStore && styles.cardNameActive
+                ]}>
+                  All Stores
+                </Text>
+                <Text style={styles.cardMeta}>Browse everything</Text>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.itemCount}>{stores?.length || 0} stores</Text>
+                  <ChevronRight size={14} color={colors.textMuted} />
+                </View>
+              </View>
+              {!selectedStore && (
+                <Animated.View style={[styles.activeIndicator, { transform: [{ scale: scaleAnim }] }]} />
+              )}
             </View>
           </BlurView>
         </TouchableOpacity>
 
+        {/* Individual Store Cards */}
         {stores?.map((store: StoreItem) => (
           <TouchableOpacity
             key={store.id}
-            style={[styles.card, selectedStore === store.id && styles.cardActive]}
+            style={[
+              styles.card,
+              selectedStore === store.id && styles.cardActive,
+              pressedCard === store.id && styles.cardPressed,
+            ]}
             onPress={() => handleSelect(store.id)}
-            activeOpacity={0.9}
+            onPressIn={() => handlePressIn(store.id)}
+            onPressOut={handlePressOut}
+            activeOpacity={0.85}
           >
-            <BlurView intensity={selectedStore === store.id ? 60 : 40} tint="light" style={styles.cardBlur}>
-              <View style={[styles.cardInner, selectedStore === store.id && styles.cardInnerActive]}>
+            <BlurView 
+              intensity={selectedStore === store.id ? 50 : 30} 
+              tint="light" 
+              style={styles.cardBlur}
+            >
+              <View style={[
+                styles.cardInner,
+                selectedStore === store.id && styles.cardInnerActive
+              ]}>
+                {/* Logo */}
                 <View style={styles.logoContainer}>
                   {store.logo_url ? (
-                    <Image source={{ uri: store.logo_url }} style={styles.logoImage} resizeMode="cover" />
+                    <Image 
+                      source={{ uri: store.logo_url }} 
+                      style={styles.logoImage} 
+                      resizeMode="cover"
+                    />
                   ) : (
                     <View style={styles.logoPlaceholder}>
                       <Store size={24} color={colors.textMuted} />
@@ -161,42 +238,75 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
                   )}
                 </View>
 
-                <View style={styles.infoContainer}>
-                  <Text style={[styles.cardName, selectedStore === store.id && styles.cardNameActive]} numberOfLines={1}>
+                {/* Info */}
+                <View style={styles.cardContent}>
+                  <Text 
+                    style={[
+                      styles.cardName,
+                      selectedStore === store.id && styles.cardNameActive
+                    ]} 
+                    numberOfLines={1}
+                  >
                     {store.name}
                   </Text>
 
                   {store.address && (
                     <View style={styles.addressRow}>
-                      <MapPin size={12} color={colors.textMuted} />
-                      <Text style={styles.addressText} numberOfLines={1}>{store.address}</Text>
-                    </View>
-                  )}
-
-                  {store.distance !== undefined && (
-                    <View style={styles.distanceRow}>
-                      <Navigation size={12} color={colors.accent} />
-                      <Text style={styles.distanceText}>
-                        {store.distance < 1 ? `${(store.distance * 1000).toFixed(0)} m` : `${store.distance.toFixed(1)} km`}
+                      <MapPin size={11} color={colors.textMuted} />
+                      <Text style={styles.addressText} numberOfLines={1}>
+                        {store.address}
                       </Text>
                     </View>
                   )}
+
+                  {/* Distance & Rating Row */}
+                  <View style={styles.metaRow}>
+                    {store.distance !== undefined && (
+                      <View style={styles.distanceBadge}>
+                        <Navigation size={10} color={colors.accent} />
+                        <Text style={styles.distanceText}>
+                          {store.distance < 1 
+                            ? `${(store.distance * 1000).toFixed(0)} m` 
+                            : `${store.distance.toFixed(1)} km`
+                          }
+                        </Text>
+                      </View>
+                    )}
+                    {store.rating && (
+                      <View style={styles.ratingBadge}>
+                        <Star size={10} color="#FFD700" fill="#FFD700" />
+                        <Text style={styles.ratingText}>{store.rating.toFixed(1)}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
 
-                {selectedStore === store.id && <View style={styles.activeIndicator} />}
+                {selectedStore === store.id && (
+                  <Animated.View style={[styles.activeIndicator, { transform: [{ scale: scaleAnim }] }]} />
+                )}
               </View>
             </BlurView>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
+      {/* Selected Store Banner */}
       {selectedStoreData && (
         <View style={styles.selectedBanner}>
-          <BlurView intensity={50} tint="light" style={styles.bannerBlur}>
+          <BlurView intensity={40} tint="light" style={styles.bannerBlur}>
             <View style={styles.bannerInner}>
+              <View style={styles.bannerIcon}>
+                <Store size={16} color={colors.accent} />
+              </View>
               <Text style={styles.bannerText}>
                 Showing products from <Text style={styles.bannerHighlight}>{selectedStoreData.name}</Text>
               </Text>
+              <TouchableOpacity 
+                style={styles.bannerClose} 
+                onPress={() => handleSelect(null)}
+              >
+                <X size={14} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
           </BlurView>
         </View>
@@ -209,8 +319,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -229,78 +341,207 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   loadingText: { color: colors.textMuted, fontSize: 14 },
+  errorContainer: {
+    backgroundColor: "rgba(255,0,0,0.1)",
+    borderRadius: 12,
+    marginHorizontal: 16,
+  },
+  errorText: { color: "#ef5350", fontSize: 13, textAlign: "center" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginBottom: 12,
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  headerLeft: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: 8 
+  },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: colors.accent + "20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "700" 
+  },
+  countBadge: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   clearBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
-  clearText: { color: colors.textMuted, fontSize: 12, fontWeight: "500" },
-  scrollContent: { paddingHorizontal: 16, gap: CARD_SPACING },
+  clearText: { 
+    color: colors.textMuted, 
+    fontSize: 12, 
+    fontWeight: "500" 
+  },
+  scrollContent: { 
+    paddingHorizontal: 16, 
+    gap: CARD_SPACING 
+  },
   card: {
     width: CARD_WIDTH,
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.glassBorder,
+    transform: [{ scale: 1 }],
   },
   cardActive: {
-    borderColor: colors.accent + "50",
+    borderColor: colors.accent + "60",
     shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 10,
   },
-  cardBlur: { borderRadius: 20, overflow: "hidden" },
+  cardPressed: {
+    transform: [{ scale: 0.96 }],
+  },
+  cardBlur: { 
+    borderRadius: 20, 
+    overflow: "hidden" 
+  },
   cardInner: {
     backgroundColor: colors.glass,
-    padding: 16,
-    minHeight: 140,
+    padding: 14,
+    minHeight: 120,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
-  cardInnerActive: { backgroundColor: colors.accent + "10" },
+  cardInnerActive: { 
+    backgroundColor: colors.accent + "12" 
+  },
   allStoresIcon: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     borderRadius: 16,
-    backgroundColor: colors.accent + "15",
+    backgroundColor: "rgba(255,255,255,0.1)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  allStoresIconActive: {
+    backgroundColor: colors.accent + "25",
+    borderColor: colors.accent + "40",
   },
   logoContainer: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: colors.glassBorder,
   },
-  logoImage: { width: "100%", height: "100%" },
-  logoPlaceholder: { width: "100%", height: "100%", justifyContent: "center", alignItems: "center" },
-  infoContainer: { flex: 1, justifyContent: "center" },
-  cardName: { color: "#fff", fontSize: 16, fontWeight: "600", marginBottom: 6 },
-  cardNameActive: { color: colors.accent },
-  cardMeta: { color: colors.textMuted, fontSize: 13 },
-  addressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-  addressText: { color: colors.textMuted, fontSize: 12, flex: 1 },
-  distanceRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  distanceText: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  logoImage: { 
+    width: "100%", 
+    height: "100%" 
+  },
+  logoPlaceholder: { 
+    width: "100%", 
+    height: "100%", 
+    justifyContent: "center", 
+    alignItems: "center" 
+  },
+  cardContent: { 
+    flex: 1, 
+    justifyContent: "center" 
+  },
+  cardName: { 
+    color: "#fff", 
+    fontSize: 15, 
+    fontWeight: "600", 
+    marginBottom: 4 
+  },
+  cardNameActive: { 
+    color: colors.accent 
+  },
+  cardMeta: { 
+    color: colors.textMuted, 
+    fontSize: 12, 
+    marginBottom: 6 
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  itemCount: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  addressRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: 4, 
+    marginBottom: 6 
+  },
+  addressText: { 
+    color: colors.textMuted, 
+    fontSize: 11, 
+    flex: 1 
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  distanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: colors.accent + "15",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  distanceText: { 
+    color: colors.accent, 
+    fontSize: 11, 
+    fontWeight: "600" 
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(255,215,0,0.15)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  ratingText: { 
+    color: "#FFD700", 
+    fontSize: 11, 
+    fontWeight: "600" 
+  },
   activeIndicator: {
     position: "absolute",
     bottom: 0,
@@ -317,10 +558,42 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.accent + "30",
+    borderColor: colors.accent + "40",
   },
-  bannerBlur: { borderRadius: 14, overflow: "hidden" },
-  bannerInner: { backgroundColor: colors.accent + "15", padding: 12, alignItems: "center" },
-  bannerText: { color: "#fff", fontSize: 13 },
-  bannerHighlight: { color: colors.accent, fontWeight: "700" },
+  bannerBlur: { 
+    borderRadius: 14, 
+    overflow: "hidden" 
+  },
+  bannerInner: { 
+    backgroundColor: colors.accent + "12", 
+    padding: 12, 
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  bannerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: colors.accent + "20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerText: { 
+    color: "#fff", 
+    fontSize: 13,
+    flex: 1,
+  },
+  bannerHighlight: { 
+    color: colors.accent, 
+    fontWeight: "700" 
+  },
+  bannerClose: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

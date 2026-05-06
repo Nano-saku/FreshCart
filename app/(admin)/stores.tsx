@@ -96,8 +96,8 @@ export default function AdminStoresScreen() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       address: form.address.trim() || null,
-      lat: lat,
-      lng: lng,
+      latitude: lat,
+      longitude: lng,
       is_active: form.is_active,
     };
 

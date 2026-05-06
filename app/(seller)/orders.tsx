@@ -12,6 +12,7 @@ import { GreenScreen } from "../../src/components/GreenScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
+import { useAuthStore } from "../../src/stores/authStore";
 
 const NEXT_STATUS: Record<string, string> = {
   pending: "confirmed",
@@ -21,23 +22,40 @@ const NEXT_STATUS: Record<string, string> = {
 };
 
 export default function AdminOrdersScreen() {
+  const { profile } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = async () => {
+    if (!profile?.id) return;
+    
+    // First find the seller's store
+    const { data: storeData } = await supabase
+      .from("stores")
+      .select("id")
+      .eq("owner_id", profile.id)
+      .single();
+
+    if (!storeData) {
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from("orders")
       .select(
         "*, customer:profiles(full_name, phone), store:stores(name), order_items(id)",
       )
+      .eq("store_id", storeData.id)
       .order("created_at", { ascending: false });
+      
     setOrders(data ?? []);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [profile]);
 
   const updateStatus = async (id: string, newStatus: string) => {
     await supabase.from("orders").update({ status: newStatus }).eq("id", id);

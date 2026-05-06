@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,48 +6,48 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { GreenScreen } from "../../../src/components/GreenScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
-import { ChevronLeft, CheckCircle2, Circle, Clock } from "lucide-react-native";
-
-const STEPS = [
-  "pending",
-  "confirmed",
-  "preparing",
-  "out_for_delivery",
-  "delivered",
-];
-const STEP_LABELS: Record<string, string> = {
-  pending: "Order placed",
-  confirmed: "Order confirmed",
-  preparing: "Preparing your order",
-  out_for_delivery: "Out for delivery",
-  delivered: "Delivered",
-};
+import { OrderStatusSteps, OrderStatusBadge } from "../../../src/components/OrderStatus";
+import { ChevronLeft, Package, MapPin, FileText, Phone } from "lucide-react-native";
 
 export default function OrderTrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrder = async () => {
-    const { data } = await supabase
-      .from("orders")
-      .select(
-        "*, store:stores(name), order_items(*, store_product:store_products(price, product:products(name, unit)))",
-      )
-      .eq("id", id)
-      .single();
-    setOrder(data);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`)
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+      setOrder(data);
+    } catch (err) {
+      console.error("Fetch order error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrder();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     fetchOrder();
+
     const channel = supabase
       .channel(`order-${id}`)
       .on(
@@ -58,27 +58,50 @@ export default function OrderTrackingScreen() {
           table: "orders",
           filter: `id=eq.${id}`,
         },
-        (payload) =>
-          setOrder((prev: any) => ({ ...prev, status: payload.new.status })),
+        (payload) => {
+          setOrder((prev: any) => ({ ...prev, status: payload.new.status }));
+        }
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [id]);
 
-  if (loading)
+  if (loading) {
     return (
       <GreenScreen>
         <ActivityIndicator color="#fff" style={{ flex: 1 }} />
       </GreenScreen>
     );
+  }
 
-  const currentStep = STEPS.indexOf(order?.status);
+  if (!order) {
+    return (
+      <GreenScreen>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Order not found</Text>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </GreenScreen>
+    );
+  }
 
   return (
     <GreenScreen>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+        }
+      >
+        {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -89,102 +112,62 @@ export default function OrderTrackingScreen() {
           <Text style={styles.title}>Order tracking</Text>
           <View style={{ width: 38 }} />
         </View>
+
+        {/* Order ID & Store */}
         <Text style={styles.orderId}>#{id?.slice(0, 8).toUpperCase()}</Text>
         <Text style={styles.storeName}>{order?.store?.name}</Text>
 
-        {/* Steps */}
+        {/* Status Steps */}
         <BlurView
           intensity={30}
           tint="light"
           style={[styles.card, { marginTop: 20 }]}
         >
           <View style={styles.cardInner}>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
-                {order?.status?.replace(/_/g, " ")}
+            <View style={styles.statusHeader}>
+              <OrderStatusBadge status={order?.status} size="md" />
+              <Text style={styles.statusDate}>
+                {new Date(order?.created_at).toLocaleDateString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </Text>
             </View>
-            {STEPS.map((step, i) => {
-              const done = i < currentStep;
-              const active = i === currentStep;
-              const isLast = i === STEPS.length - 1;
-              return (
-                <View key={step} style={styles.stepRow}>
-                  <View style={styles.stepCol}>
-                    {done ? (
-                      <CheckCircle2
-                        size={22}
-                        color={colors.accent}
-                        fill={colors.primary}
-                      />
-                    ) : active ? (
-                      <View style={styles.activeDot}>
-                        <View style={styles.innerDot} />
-                      </View>
-                    ) : (
-                      <Circle size={22} color="rgba(255,255,255,0.25)" />
-                    )}
-                    {!isLast && (
-                      <View
-                        style={[
-                          styles.line,
-                          {
-                            backgroundColor: done
-                              ? "rgba(168,224,99,0.5)"
-                              : "rgba(255,255,255,0.12)",
-                          },
-                        ]}
-                      />
-                    )}
-                  </View>
-                  <View
-                    style={[styles.stepInfo, isLast && { paddingBottom: 0 }]}
-                  >
-                    <Text
-                      style={[
-                        styles.stepLabel,
-                        {
-                          color: done
-                            ? colors.accent
-                            : active
-                              ? "#fff"
-                              : "rgba(255,255,255,0.35)",
-                        },
-                      ]}
-                    >
-                      {STEP_LABELS[step]}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+            <OrderStatusSteps status={order?.status} />
           </View>
         </BlurView>
 
-        {/* Order items */}
+        {/* Order Items */}
         <BlurView
           intensity={30}
           tint="light"
           style={[styles.card, { marginTop: 12 }]}
         >
           <View style={styles.cardInner}>
-            <Text style={styles.sectionTitle}>Items ordered</Text>
+            <View style={styles.sectionHeader}>
+              <Package size={18} color={colors.accent} />
+              <Text style={styles.sectionTitle}>Items ordered</Text>
+            </View>
+
             {order?.order_items?.map((item: any) => (
               <View key={item.id} style={styles.itemRow}>
                 <Text style={styles.itemName}>
                   {item.store_product?.product?.name}
                 </Text>
-                <Text style={styles.itemQty}>x{item.quantity}</Text>
-                <Text style={styles.itemPrice}>
-                  ₱{(item.unit_price * item.quantity).toFixed(2)}
-                </Text>
+                <View style={styles.itemRight}>
+                  <Text style={styles.itemQty}>x{item.quantity}</Text>
+                  <Text style={styles.itemPrice}>
+                    ₱{(item.unit_price * item.quantity).toFixed(2)}
+                  </Text>
+                </View>
               </View>
             ))}
+
             <View style={styles.divider} />
+
             <View style={styles.itemRow}>
-              <Text
-                style={[styles.itemName, { color: "#fff", fontWeight: "700" }]}
-              >
+              <Text style={[styles.itemName, { color: "#fff", fontWeight: "700" }]}>
                 Total
               </Text>
               <Text
@@ -199,21 +182,52 @@ export default function OrderTrackingScreen() {
           </View>
         </BlurView>
 
-        {/* Delivery address */}
+        {/* Delivery Info */}
         <BlurView
           intensity={30}
           tint="light"
           style={[styles.card, { marginTop: 12 }]}
         >
           <View style={styles.cardInner}>
-            <Text style={styles.sectionTitle}>Delivery address</Text>
-            <Text
-              style={{ color: colors.textMuted, fontSize: 13, lineHeight: 20 }}
-            >
-              {order?.delivery_address}
-            </Text>
+            <View style={styles.sectionHeader}>
+              <MapPin size={18} color={colors.accent} />
+              <Text style={styles.sectionTitle}>Delivery details</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Address</Text>
+              <Text style={styles.infoValue}>{order?.delivery_address}</Text>
+            </View>
+
+            {order?.notes && (
+              <View style={styles.infoRow}>
+                <FileText size={14} color={colors.textMuted} />
+                <Text style={[styles.infoValue, { marginLeft: 8 }]}>
+                  {order.notes}
+                </Text>
+              </View>
+            )}
           </View>
         </BlurView>
+
+        {/* Store Contact */}
+        {order?.store?.phone && (
+          <BlurView
+            intensity={30}
+            tint="light"
+            style={[styles.card, { marginTop: 12 }]}
+          >
+            <View style={styles.cardInner}>
+              <View style={styles.sectionHeader}>
+                <Phone size={18} color={colors.accent} />
+                <Text style={styles.sectionTitle}>Store contact</Text>
+              </View>
+              <TouchableOpacity style={styles.phoneRow}>
+                <Text style={styles.phoneText}>{order.store.phone}</Text>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        )}
       </ScrollView>
     </GreenScreen>
   );
@@ -246,60 +260,85 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
   },
   cardInner: { backgroundColor: colors.glass, padding: 18 },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(168,224,99,0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(168,224,99,0.35)",
-    marginBottom: 18,
-  },
-  statusText: {
-    color: colors.accent,
-    fontWeight: "600",
-    fontSize: 13,
-    textTransform: "capitalize",
-  },
-  stepRow: { flexDirection: "row", gap: 14 },
-  stepCol: { alignItems: "center" },
-  line: { width: 2, flex: 1, minHeight: 20, marginTop: 2 },
-  activeDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.85)",
+  statusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(168,224,99,0.5)",
+    marginBottom: 16,
   },
-  innerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
+  statusDate: {
+    color: colors.textMuted,
+    fontSize: 12,
   },
-  stepInfo: { paddingBottom: 20, flex: 1, justifyContent: "center" },
-  stepLabel: { fontSize: 13, fontWeight: "600" },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
   sectionTitle: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
-    marginBottom: 12,
   },
   itemRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    marginBottom: 10,
   },
   itemName: { color: colors.textMuted, fontSize: 13, flex: 1 },
-  itemQty: { color: colors.textMuted, fontSize: 13, marginHorizontal: 8 },
-  itemPrice: { color: "#fff", fontSize: 13 },
+  itemRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  itemQty: { color: colors.textMuted, fontSize: 13 },
+  itemPrice: { color: "#fff", fontSize: 13, fontWeight: "600" },
   divider: {
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.15)",
     marginVertical: 10,
+  },
+  infoRow: {
+    marginBottom: 10,
+  },
+  infoLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: "#fff",
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  phoneRow: {
+    backgroundColor: "rgba(168,224,99,0.1)",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.accent + "30",
+  },
+  phoneText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  errorText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  backBtnText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

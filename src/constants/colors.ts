@@ -10,4 +10,5 @@ export const colors = {
   textDark: "#1a3a1a",
   yellow: "#ffeb3b",
   blue: "#8090ebff",
+  secondary: "#4CAF50", 
 };

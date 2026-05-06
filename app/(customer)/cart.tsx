@@ -10,9 +10,10 @@ import {
 import { GreenScreen } from "../../src/components/GreenScreen";
 import { BlurView } from "expo-blur";
 import { useCartStore } from "../../src/stores/cartStore";
+import { CartItem } from "../../src/components/CartItem";
 import { colors } from "../../src/constants/colors";
 import { router } from "expo-router";
-import { Trash2, Plus, Minus } from "lucide-react-native";
+import { ShoppingBag } from "lucide-react-native";
 
 export default function CartScreen() {
   const { items, loading, fetchCart, removeItem, updateQuantity, total } =
@@ -39,39 +40,11 @@ export default function CartScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 280 }}
           renderItem={({ item }) => (
-            <BlurView intensity={30} tint="light" style={styles.card}>
-              <View style={styles.cardInner}>
-                <View style={styles.emoji}>
-                  <Text style={{ fontSize: 28 }}>🛒</Text>
-                </View>
-                <View style={styles.info}>
-                  <Text style={styles.itemName}>{item.product.name}</Text>
-                  <Text style={styles.itemStore}>{item.store_name}</Text>
-                  <Text style={styles.itemUnit}>{item.product.unit}</Text>
-                </View>
-                <View style={styles.right}>
-                  <Text style={styles.itemPrice}>
-                    ₱{(item.price * item.quantity).toFixed(2)}
-                  </Text>
-                  <View style={styles.qtyRow}>
-                    <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, item.quantity - 1)}
-                    >
-                      <Minus size={16} color="#fff" />
-                    </TouchableOpacity>
-                    <Text style={styles.qty}>{item.quantity}</Text>
-                    <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, item.quantity + 1)}
-                    >
-                      <Plus size={16} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity onPress={() => removeItem(item.id)}>
-                    <Trash2 size={16} color="rgba(255,100,100,0.8)" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </BlurView>
+            <CartItem
+              item={item}
+              onUpdateQuantity={updateQuantity}
+              onRemove={removeItem}
+            />
           )}
           ListFooterComponent={() =>
             items.length > 0 ? (
@@ -130,7 +103,16 @@ export default function CartScreen() {
         />
       )}
       {items.length === 0 && !loading && (
-        <Text style={styles.empty}>Your cart is empty</Text>
+        <View style={styles.emptyContainer}>
+          <ShoppingBag size={48} color={colors.textMuted} />
+          <Text style={styles.empty}>Your cart is empty</Text>
+          <TouchableOpacity
+            style={styles.browseBtn}
+            onPress={() => router.push("/(customer)")}
+          >
+            <Text style={styles.browseText}>Browse Products</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </GreenScreen>
   );
@@ -148,40 +130,7 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     backgroundColor: colors.glass,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  emoji: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  info: { flex: 1 },
-  itemName: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  itemStore: { color: colors.textMuted, fontSize: 12 },
-  itemUnit: { color: colors.accent, fontSize: 11, marginTop: 2 },
-  right: { alignItems: "flex-end", gap: 6 },
-  itemPrice: { color: colors.accent, fontSize: 14, fontWeight: "700" },
-  qtyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  qty: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-    minWidth: 20,
-    textAlign: "center",
+    padding: 18,
   },
   summaryRow: {
     flexDirection: "row",
@@ -205,10 +154,32 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.2)",
   },
   checkoutText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  emptyContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
   empty: {
     color: colors.textMuted,
     textAlign: "center",
-    marginTop: 80,
     fontSize: 16,
+  },
+  browseBtn: {
+    backgroundColor: colors.accent + "30",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.accent + "50",
+  },
+  browseText: {
+    color: colors.accent,
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

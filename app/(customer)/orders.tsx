@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,51 +6,67 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { GreenScreen } from "../../src/components/GreenScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
-import { router } from "expo-router";
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: "#ffeb3b",
-  confirmed: "#64b5f6",
-  preparing: "#ffa726",
-  out_for_delivery: "#a8e063",
-  delivered: "#4caf50",
-  cancelled: "#ef5350",
-};
+import { useLocalSearchParams, router } from "expo-router";
+import { OrderStatusBadge, STATUS_COLORS } from "../../src/components/OrderStatus";
+import { Package, Clock } from "lucide-react-native";
 
 export default function OrdersScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrders = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("orders")
-      .select("*, store:stores(name), order_items(id)")
-      .eq("customer_id", user.id)
-      .order("created_at", { ascending: false });
-    setOrders(data ?? []);
-    setLoading(false);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+       .from("orders")
+        .select(`*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`)
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+      setOrders(data ?? []);
+    } catch (err) {
+      console.error("Fetch orders error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     fetchOrders();
+
     // Realtime order status updates
     const channel = supabase
       .channel("my-orders")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "orders" },
-        () => fetchOrders(),
+        () => fetchOrders()
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -60,7 +76,11 @@ export default function OrdersScreen() {
     <GreenScreen>
       <View style={styles.header}>
         <Text style={styles.title}>My orders</Text>
+        <Text style={styles.subtitle}>
+          {orders.length} order{orders.length !== 1 ? "s" : ""}
+        </Text>
       </View>
+
       {loading ? (
         <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
       ) : (
@@ -68,57 +88,69 @@ export default function OrdersScreen() {
           data={orders}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => router.push(`/(customer)/order/${item.id}`)}
+              activeOpacity={0.85}
             >
               <BlurView intensity={30} tint="light" style={styles.card}>
                 <View style={styles.cardInner}>
                   <View style={styles.row}>
-                    <Text style={styles.orderId}>
-                      #{item.id.slice(0, 8).toUpperCase()}
-                    </Text>
-                    <View
-                      style={[
-                        styles.badge,
-                        {
-                          backgroundColor: `${STATUS_COLOR[item.status]}22`,
-                          borderColor: `${STATUS_COLOR[item.status]}55`,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.badgeText,
-                          { color: STATUS_COLOR[item.status] },
-                        ]}
-                      >
-                        {item.status.replace(/_/g, " ")}
+                    <View style={styles.orderIdContainer}>
+                      <Package size={16} color={colors.accent} />
+                      <Text style={styles.orderId}>
+                        #{item.id.slice(0, 8).toUpperCase()}
+                      </Text>
+                    </View>
+                    <OrderStatusBadge status={item.status} size="sm" />
+                  </View>
+
+                  <Text style={styles.storeName}>{item.store?.name || "Unknown Store"}</Text>
+
+                  <View style={styles.row}>
+                    <View style={styles.metaContainer}>
+                      <Clock size={12} color={colors.textMuted} />
+                      <Text style={styles.meta}>
+                        {new Date(item.created_at).toLocaleDateString("en-PH", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.metaContainer}>
+                      <Text style={styles.meta}>
+                        {item.order_items?.length || 0} item{item.order_items?.length !== 1 ? "s" : ""}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.storeName}>{item.store?.name}</Text>
-                  <View style={styles.row}>
-                    <Text style={styles.meta}>
-                      {item.order_items?.length} item
-                      {item.order_items?.length !== 1 ? "s" : ""}
-                    </Text>
+
+                  <View style={styles.amountRow}>
                     <Text style={styles.amount}>
                       ₱{item.total_amount?.toFixed(2)}
                     </Text>
+                    <Text style={styles.trackText}>Tap to track →</Text>
                   </View>
-                  <Text style={styles.date}>
-                    {new Date(item.created_at).toLocaleDateString("en-PH", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </Text>
                 </View>
               </BlurView>
             </TouchableOpacity>
           )}
-          ListEmptyComponent={<Text style={styles.empty}>No orders yet</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Package size={48} color={colors.textMuted} />
+              <Text style={styles.empty}>No orders yet</Text>
+              <TouchableOpacity
+                style={styles.browseBtn}
+                onPress={() => router.push("/(customer)")}
+              >
+                <Text style={styles.browseText}>Start Shopping</Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
       )}
     </GreenScreen>
@@ -128,34 +160,65 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   header: { padding: 20, paddingBottom: 8 },
   title: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
   card: {
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.glassBorder,
   },
-  cardInner: { backgroundColor: colors.glass, padding: 16, gap: 6 },
+  cardInner: { backgroundColor: colors.glass, padding: 16, gap: 8 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderId: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
+  orderIdContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  badgeText: { fontSize: 11, fontWeight: "600", textTransform: "capitalize" },
+  orderId: { color: "#fff", fontWeight: "700", fontSize: 14 },
   storeName: { color: colors.textMuted, fontSize: 13 },
+  metaContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   meta: { color: colors.textMuted, fontSize: 12 },
-  amount: { color: colors.accent, fontWeight: "700", fontSize: 14 },
-  date: { color: colors.textMuted, fontSize: 11 },
+  amountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.1)",
+  },
+  amount: { color: colors.accent, fontWeight: "700", fontSize: 16 },
+  trackText: { color: colors.textMuted, fontSize: 12 },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    gap: 16,
+  },
   empty: {
     color: colors.textMuted,
     textAlign: "center",
-    marginTop: 80,
     fontSize: 16,
+  },
+  browseBtn: {
+    backgroundColor: colors.accent + "30",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.accent + "50",
+  },
+  browseText: {
+    color: colors.accent,
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

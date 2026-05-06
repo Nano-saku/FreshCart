@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 
 interface Profile {
   id: string;
+  email: string;
   full_name: string;
   phone: string;
   role: "customer" | "admin" | "seller";
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       id: data.id,
       full_name: data.full_name || "",
       phone: data.phone || "",
+      email: data.email || "",
       role: validRoles.includes(data.role) ? data.role : "customer",
       avatar_url: data.avatar_url || null,
       email_verified: data.email_verified || false,

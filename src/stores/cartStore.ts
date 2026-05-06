@@ -5,12 +5,12 @@ interface CartItem {
   id: string;
   store_product_id: string;
   quantity: number;
+  price: number;
   product: {
     name: string;
-    image_url: string | null;
     unit: string;
+    image_url: string | null;
   };
-  price: number;
   store_name: string;
 }
 
@@ -19,8 +19,8 @@ interface CartState {
   loading: boolean;
   fetchCart: () => Promise<void>;
   addItem: (storeProductId: string, quantity?: number) => Promise<void>;
-  removeItem: (id: string) => Promise<void>;
-  updateQuantity: (id: string, quantity: number) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   total: () => number;
 }
@@ -31,73 +31,105 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   fetchCart: async () => {
     set({ loading: true });
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("cart_items")
-      .select(
-        `
-        id, quantity, store_product_id,
-        store_product:store_products(
-          price,
-          store:stores(name),
-          product:products(name, image_url, unit)
-        )
-      `,
-      )
-      .eq("customer_id", user.id);
-    if (data) {
-      const mapped = data.map((item: any) => ({
-        id: item.id,
-        store_product_id: item.store_product_id,
-        quantity: item.quantity,
-        price: item.store_product.price,
-        store_name: item.store_product.store.name,
-        product: item.store_product.product,
-      }));
-      set({ items: mapped, loading: false });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      set({ items: [], loading: false });
+      return;
     }
-  },
 
-  addItem: async (storeProductId, quantity = 1) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("cart_items").upsert(
-      {
-        customer_id: user.id,
-        store_product_id: storeProductId,
-        quantity,
+    const { data, error } = await supabase
+        .from("cart_items")
+      .select(`id, store_product_id, quantity, store_product:store_products(price, store:stores(name), product:products(name, unit, image_url))`)
+      .eq("customer_id", user.id);
+
+    if (error) {
+      console.error("Fetch cart error:", error);
+      set({ loading: false });
+      return;
+    }
+
+    const items = (data || []).map((item: any) => ({
+      id: item.id,
+      store_product_id: item.store_product_id,
+      quantity: item.quantity,
+      price: item.store_product?.price || 0,
+      product: {
+        name: item.store_product?.product?.name || "Unknown",
+        unit: item.store_product?.product?.unit || "piece",
+        image_url: item.store_product?.product?.image_url,
       },
-      { onConflict: "customer_id,store_product_id" },
-    );
-    get().fetchCart();
-  },
-
-  removeItem: async (id) => {
-    await supabase.from("cart_items").delete().eq("id", id);
-    set((state) => ({ items: state.items.filter((i) => i.id !== id) }));
-  },
-
-  updateQuantity: async (id, quantity) => {
-    if (quantity < 1) return get().removeItem(id);
-    await supabase.from("cart_items").update({ quantity }).eq("id", id);
-    set((state) => ({
-      items: state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+      store_name: item.store_product?.store?.name || "Unknown Store",
     }));
+
+    set({ items, loading: false });
+  },
+
+  addItem: async (storeProductId: string, quantity = 1) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Check if item already in cart
+    const { data: existing } = await supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("customer_id", user.id)
+      .eq("store_product_id", storeProductId)
+      .single();
+
+    if (existing) {
+      const { error } = await supabase
+        .from("cart_items")
+        .update({ quantity: existing.quantity + quantity })
+        .eq("id", existing.id);
+      if (error) console.error("Update cart error:", error);
+    } else {
+      const { error } = await supabase
+        .from("cart_items")
+        .insert({
+          customer_id: user.id,
+          store_product_id: storeProductId,
+          quantity,
+        });
+      if (error) console.error("Insert cart error:", error);
+    }
+
+    await get().fetchCart();
+  },
+
+  removeItem: async (cartItemId: string) => {
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("id", cartItemId);
+    if (error) console.error("Remove cart error:", error);
+    await get().fetchCart();
+  },
+
+  updateQuantity: async (cartItemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      await get().removeItem(cartItemId);
+      return;
+    }
+    const { error } = await supabase
+      .from("cart_items")
+      .update({ quantity })
+      .eq("id", cartItemId);
+    if (error) console.error("Update quantity error:", error);
+    await get().fetchCart();
   },
 
   clearCart: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("cart_items").delete().eq("customer_id", user.id);
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("customer_id", user.id);
+    if (error) console.error("Clear cart error:", error);
     set({ items: [] });
   },
 
-  total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+  total: () => {
+    return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  },
 }));

@@ -14,6 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import { GreenScreen } from "../../src/components/GreenScreen";
 import { supabase } from "../../src/lib/supabase";
+import * as SecureStore from "expo-secure-store";
 import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
 import {
@@ -32,6 +33,9 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ImagePickerButton } from "../../src/components/ImagePickerButton";
+
+const BIOMETRIC_KEY = "biometric_enabled";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
 export default function AdminProfile() {
   const router = useRouter();
