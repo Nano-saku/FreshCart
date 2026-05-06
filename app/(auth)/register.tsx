@@ -52,25 +52,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    // 2. Create profile immediately (before email verification)
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        id: data.user.id,
-        email: email,
-        full_name: fullName,
-        phone: phone,
-        role: role,
-        email_verified: false,
-        created_at: new Date().toISOString(),
-      });
-
-    if (profileError) {
-      console.error("Profile insert error:", profileError);
-      Alert.alert("Error", "Account created but profile setup failed. Please try again.");
-      setLoading(false);
-      return;
-    }
+    
 
     setLoading(false);
     setShowVerify(true);
