@@ -14,7 +14,17 @@ import { GreenScreen } from "../../src/components/GreenScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
-import { User, Shield, Phone, Ban, Trash2, Pencil, X, Check, ChevronRight } from "lucide-react-native";
+import {
+  User,
+  Shield,
+  Phone,
+  Ban,
+  Trash2,
+  Pencil,
+  X,
+  Check,
+  ChevronRight,
+} from "lucide-react-native";
 
 interface Profile {
   id: string;
@@ -36,10 +46,15 @@ export default function AdminUsersScreen() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("profiles")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false });
+
+    console.log("Data:", data);
+    console.log("Error:", error);
+    console.log("Count:", count);
+    console.log("Data length:", data?.length);
 
     if (error) {
       console.error("Error fetching users:", error);
@@ -75,7 +90,7 @@ export default function AdminUsersScreen() {
       // Also update auth.users metadata for consistency
       const { error: authError } = await supabase.auth.admin.updateUserById(
         selectedUser.id,
-        { user_metadata: { role: editRole } }
+        { user_metadata: { role: editRole } },
       );
 
       if (authError) {
@@ -126,7 +141,7 @@ export default function AdminUsersScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -135,7 +150,7 @@ export default function AdminUsersScreen() {
 
     Alert.alert(
       "Delete User",
-      `This will permanently delete ${selectedUser.full_name || "this user"} and all their data. This cannot be undone.`,
+      `This will ban and remove ${selectedUser.full_name || "this user"}'s profile data. To fully delete their auth account, use the Supabase dashboard.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -144,34 +159,60 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              // Delete from auth.users (cascades to profiles via ON DELETE CASCADE)
-              const { error } = await supabase.auth.admin.deleteUser(selectedUser.id);
+              // Step 1: Set role to "banned" to block all access immediately
+              const { error: banError } = await supabase
+                .from("profiles")
+                .update({ role: "banned" })
+                .eq("id", selectedUser.id);
 
-              if (error) {
-                // Fallback: just delete profile if auth admin fails
-                await supabase.from("profiles").delete().eq("id", selectedUser.id);
-              }
+              if (banError) throw banError;
 
-              Alert.alert("Success", "User deleted");
+              // Step 2: Delete their cart, orders reference, and profile data
+              await supabase
+                .from("cart_items")
+                .delete()
+                .eq("customer_id", selectedUser.id);
+              await supabase
+                .from("reviews")
+                .delete()
+                .eq("customer_id", selectedUser.id);
+
+              // Step 3: Delete the profile row itself
+              const { error: profileError } = await supabase
+                .from("profiles")
+                .delete()
+                .eq("id", selectedUser.id);
+
+              if (profileError) throw profileError;
+
+              Alert.alert(
+                "User Removed",
+                "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard.",
+              );
               setModalVisible(false);
               fetchUsers();
             } catch (error: any) {
+              console.error("Delete user error:", error);
               Alert.alert("Error", error.message || "Failed to delete user");
             } finally {
               setActionLoading(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const getRoleColor = (role?: string) => {
     switch (role) {
-      case "admin": return "#EF4444";
-      case "seller": return "#F59E0B";
-      case "banned": return "#6B7280";
-      default: return colors.accent;
+      case "admin":
+        return "#EF4444";
+      case "seller":
+        return "#F59E0B";
+      case "banned":
+        return "#6B7280";
+      default:
+        return colors.accent;
     }
   };
 
@@ -202,8 +243,18 @@ export default function AdminUsersScreen() {
                       <Text style={styles.userName}>
                         {item.full_name || "Unknown User"}
                       </Text>
-                      <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) + "20" }]}>
-                        <Text style={[styles.roleText, { color: getRoleColor(item.role) }]}>
+                      <View
+                        style={[
+                          styles.roleBadge,
+                          { backgroundColor: getRoleColor(item.role) + "20" },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.roleText,
+                            { color: getRoleColor(item.role) },
+                          ]}
+                        >
                           {item.role?.toUpperCase() || "USER"}
                         </Text>
                       </View>
@@ -271,7 +322,9 @@ export default function AdminUsersScreen() {
                       {selectedUser.full_name || "Unknown"}
                     </Text>
                     <Text style={styles.userEmail}>{selectedUser.email}</Text>
-                    <Text style={styles.userId}>ID: {selectedUser.id.slice(0, 8)}...</Text>
+                    <Text style={styles.userId}>
+                      ID: {selectedUser.id.slice(0, 8)}...
+                    </Text>
                   </View>
 
                   <Text style={styles.label}>Change Role</Text>
@@ -305,7 +358,13 @@ export default function AdminUsersScreen() {
                     {actionLoading ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <Check size={18} color="#fff" />
                         <Text style={styles.actionBtnText}>Update Role</Text>
                       </View>
@@ -319,7 +378,13 @@ export default function AdminUsersScreen() {
                     onPress={banUser}
                     disabled={actionLoading}
                   >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
                       <Ban size={18} color="#fff" />
                       <Text style={styles.actionBtnText}>Ban User</Text>
                     </View>
@@ -330,7 +395,13 @@ export default function AdminUsersScreen() {
                     onPress={deleteUser}
                     disabled={actionLoading}
                   >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
                       <Trash2 size={18} color="#fff" />
                       <Text style={styles.actionBtnText}>Delete User</Text>
                     </View>
@@ -350,10 +421,10 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { 
-    color: "#fff", 
-    fontSize: 24, 
-    fontWeight: "700" 
+  title: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "700",
   },
   subtitle: {
     color: colors.textMuted,
@@ -387,9 +458,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 2,
   },
-  userName: { 
-    color: "#fff", 
-    fontWeight: "600", 
+  userName: {
+    color: "#fff",
+    fontWeight: "600",
     fontSize: 16,
     flex: 1,
   },
@@ -402,10 +473,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  meta: { 
-    color: colors.textMuted, 
-    fontSize: 13, 
-    marginBottom: 4 
+  meta: {
+    color: colors.textMuted,
+    fontSize: 13,
+    marginBottom: 4,
   },
   infoRow: {
     flexDirection: "row",
@@ -447,10 +518,10 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
     maxHeight: "85%",
   },
-  modalInner: { 
-    backgroundColor: "rgba(26,74,26,0.95)", 
-    padding: 24, 
-    gap: 4 
+  modalInner: {
+    backgroundColor: "rgba(26,74,26,0.95)",
+    padding: 24,
+    gap: 4,
   },
   modalHeader: {
     flexDirection: "row",
@@ -458,10 +529,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  modalTitle: { 
-    color: "#fff", 
-    fontSize: 20, 
-    fontWeight: "700" 
+  modalTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
   },
   closeBtn: {
     width: 36,
