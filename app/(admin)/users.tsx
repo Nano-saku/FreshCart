@@ -35,20 +35,25 @@ export default function AdminUsersScreen() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+  setLoading(true);
+  const { data, error, count } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching users:", error);
-      Alert.alert("Error", "Failed to load users");
-    } else {
-      setUsers(data ?? []);
-    }
-    setLoading(false);
-  };
+  console.log("Data:", data);
+  console.log("Error:", error);
+  console.log("Count:", count);
+  console.log("Data length:", data?.length);
+
+  if (error) {
+    console.error("Error fetching users:", error);
+    Alert.alert("Error", "Failed to load users");
+  } else {
+    setUsers(data ?? []);
+  }
+  setLoading(false);
+};
 
   useEffect(() => {
     fetchUsers();
@@ -135,7 +140,7 @@ export default function AdminUsersScreen() {
 
     Alert.alert(
       "Delete User",
-      `This will permanently delete ${selectedUser.full_name || "this user"} and all their data. This cannot be undone.`,
+      `This will ban and remove ${selectedUser.full_name || "this user"}'s profile data. To fully delete their auth account, use the Supabase dashboard.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -144,18 +149,34 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              // Delete from auth.users (cascades to profiles via ON DELETE CASCADE)
-              const { error } = await supabase.auth.admin.deleteUser(selectedUser.id);
+              // Step 1: Set role to "banned" to block all access immediately
+              const { error: banError } = await supabase
+                .from("profiles")
+                .update({ role: "banned" })
+                .eq("id", selectedUser.id);
 
-              if (error) {
-                // Fallback: just delete profile if auth admin fails
-                await supabase.from("profiles").delete().eq("id", selectedUser.id);
-              }
+              if (banError) throw banError;
 
-              Alert.alert("Success", "User deleted");
+              // Step 2: Delete their cart, orders reference, and profile data
+              await supabase.from("cart_items").delete().eq("customer_id", selectedUser.id);
+              await supabase.from("reviews").delete().eq("customer_id", selectedUser.id);
+
+              // Step 3: Delete the profile row itself
+              const { error: profileError } = await supabase
+                .from("profiles")
+                .delete()
+                .eq("id", selectedUser.id);
+
+              if (profileError) throw profileError;
+
+              Alert.alert(
+                "User Removed",
+                "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard."
+              );
               setModalVisible(false);
               fetchUsers();
             } catch (error: any) {
+              console.error("Delete user error:", error);
               Alert.alert("Error", error.message || "Failed to delete user");
             } finally {
               setActionLoading(false);

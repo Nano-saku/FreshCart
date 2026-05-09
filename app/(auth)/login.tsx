@@ -243,15 +243,6 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Enable biometric toggle */}
-            {biometricAvailable && !biometricEnabled && (
-              <TouchableOpacity onPress={enableBiometric} style={styles.link}>
-                <Text style={[styles.linkText, { color: colors.blue }]}>
-                  🔐 Enable fingerprint login
-                </Text>
-              </TouchableOpacity>
-            )}
-
             <TouchableOpacity
               onPress={() => router.replace("/register")}
               style={styles.link}
