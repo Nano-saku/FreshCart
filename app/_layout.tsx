@@ -8,10 +8,20 @@ import { useAuthStore } from "../src/stores/authStore";
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { session, setSession, profile, fetchProfile, signOut } = useAuthStore();
+  const {
+    session,
+    setSession,
+    profile,
+    fetchProfile,
+    signOut,
+    checkBiometric,
+    isLoggingOut // NEW: Check if logout is in progress
+  } = useAuthStore();
+  
   const router = useRouter();
   const segments = useSegments();
   const [isReady, setIsReady] = useState(false);
+  const [biometricChecked, setBiometricChecked] = useState(false);
 
   // Handle auth state changes with async profile fetch
   const handleAuthChange = async (newSession: any) => {
@@ -46,21 +56,47 @@ function RootLayoutNav() {
     setIsReady(true);
   };
 
+  // Initial setup - check session and biometric
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleAuthChange(session);
-    });
+    const initializeAuth = async () => {
+      // First, check if biometric can restore session
+      if (!isLoggingOut && !biometricChecked) {
+        const biometricSuccess = await checkBiometric();
+        setBiometricChecked(true);
+        
+        if (biometricSuccess) {
+          // Biometric restored session - let handleAuthChange process it
+          const { data: { session } } = await supabase.auth.getSession();
+          await handleAuthChange(session);
+          return;
+        }
+      }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      // No biometric or failed - check normal session
+      supabase.auth.getSession().then(({ data: { session } }) => {
         handleAuthChange(session);
+      });
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Listen for auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        // Don't process auth changes during logout
+        if (isLoggingOut) {
+          console.log('Auth change ignored: logout in progress');
+          return;
+        }
+
+        await handleAuthChange(session);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isLoggingOut]); // Re-subscribe when isLoggingOut changes
 
   // Guard against role-switching when already inside the app
   useEffect(() => {
