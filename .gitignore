@@ -14,6 +14,7 @@ expo-env.d.ts
 .env.local
 .env.development
 .env.production
+.credentials.json
 
 # Native
 .kotlin/
