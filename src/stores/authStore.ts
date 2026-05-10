@@ -10,12 +10,12 @@ interface AuthState {
   profile: any;
   loading: boolean;
   biometricEnabled: boolean;
-  isLoggingOut: boolean; // NEW: Prevents biometric during logout
+  isLoggingOut: boolean;
   setSession: (session: Session | null) => void;
   setProfile: (profile: any) => void;
   fetchProfile: (userId: string) => Promise<any>;
   signOut: () => Promise<void>;
-  softSignOut: () => Promise<void>; // NEW: Soft logout
+  softSignOut: () => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
   checkBiometric: () => Promise<boolean>;
 }
@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ 
       session, 
       user: session?.user ?? null,
-      isLoggingOut: false // Reset logout flag when setting new session
+      isLoggingOut: false
     });
   },
 
@@ -58,12 +58,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // FULL LOGOUT - Clears everything including biometric
   signOut: async () => {
-    set({ isLoggingOut: true }); // Set flag BEFORE logout starts
+    set({ isLoggingOut: true });
     
     try {
-      // Clear SecureStore
-      await SecureStore.deleteItemAsync('refresh_token');
-      await SecureStore.deleteItemAsync('biometric_enabled');
+      // Clear all SecureStore items
+      await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+      await SecureStore.deleteItemAsync('biometric_enabled').catch(() => {});
       
       // Sign out from Supabase
       await supabase.auth.signOut();
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // SOFT LOGOUT - Keeps biometric for quick re-login
   softSignOut: async () => {
-    set({ isLoggingOut: true }); // Set flag BEFORE logout starts
+    set({ isLoggingOut: true });
     
     try {
       // Sign out from Supabase but keep SecureStore tokens
@@ -105,18 +105,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setBiometricEnabled: async (enabled: boolean) => {
     try {
-      await SecureStore.setItemAsync('biometric_enabled', enabled.toString());
-      
       if (enabled) {
+        // Get current session
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.refresh_token) {
-          await SecureStore.setItemAsync('refresh_token', session.refresh_token);
+        
+        if (!session?.refresh_token) {
+          throw new Error('No active session to save');
         }
+
+        // Save settings
+        await SecureStore.setItemAsync('biometric_enabled', 'true');
+        await SecureStore.setItemAsync('refresh_token', session.refresh_token);
+        
+        set({ biometricEnabled: true });
       } else {
-        await SecureStore.deleteItemAsync('refresh_token');
+        // Disable biometric
+        await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+        await SecureStore.setItemAsync('biometric_enabled', 'false');
+        
+        set({ biometricEnabled: false });
       }
-      
-      set({ biometricEnabled: enabled });
     } catch (error) {
       console.error('Error setting biometric:', error);
       throw error;
@@ -127,14 +135,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       // CRITICAL: Don't run biometric during logout
       if (get().isLoggingOut) {
-        console.log('Biometric check skipped: logout in progress');
+        console.log('[Biometric] Skipped: logout in progress');
         return false;
       }
 
+      // Check if biometric is enabled
       const savedBiometric = await SecureStore.getItemAsync('biometric_enabled');
+      
+      if (savedBiometric !== 'true') {
+        console.log('[Biometric] Not enabled');
+        return false;
+      }
+
+      // Get refresh token
       const refreshToken = await SecureStore.getItemAsync('refresh_token');
       
-      if (savedBiometric !== 'true' || !refreshToken) {
+      if (!refreshToken) {
+        console.log('[Biometric] No refresh token found');
+        // Clean up invalid state
+        await SecureStore.setItemAsync('biometric_enabled', 'false');
+        set({ biometricEnabled: false });
         return false;
       }
 
@@ -143,6 +163,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       
       if (!compatible || !enrolled) {
+        console.log('[Biometric] Hardware not available or not enrolled');
         return false;
       }
 
@@ -153,37 +174,67 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         disableDeviceFallback: false,
       });
 
-      if (result.success) {
-        // Restore session from refresh token
-        const { data, error } = await supabase.auth.setSession({
-          access_token: '', // Will be regenerated
-          refresh_token: refreshToken,
-        });
-
-        if (error) {
-          console.error('Session restore error:', error);
-          return false;
-        }
-
-        if (data.session) {
-          set({ 
-            session: data.session, 
-            user: data.session.user,
-            biometricEnabled: true 
-          });
-          
-          // Fetch profile after session restore
-          const fetchedProfile = await get().fetchProfile(data.session.user.id);
-          
-          if (fetchedProfile) {
-            return true;
-          }
-        }
+      if (!result.success) {
+        console.log('[Biometric] Authentication failed or cancelled');
+        return false;
       }
 
-      return false;
+      // Try to restore session from refresh token
+      console.log('[Biometric] Attempting session restore...');
+      
+      const { data, error } = await supabase.auth.setSession({
+        access_token: '', // Will be regenerated
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        console.error('[Biometric] Session restore failed:', error.message);
+        
+        // If refresh token is invalid, clean up
+        if (error.message.includes('Invalid Refresh Token') || 
+            error.message.includes('Refresh Token Not Found')) {
+          console.log('[Biometric] Cleaning up invalid refresh token');
+          await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+          await SecureStore.setItemAsync('biometric_enabled', 'false');
+          set({ biometricEnabled: false });
+        }
+        
+        return false;
+      }
+
+      if (!data.session) {
+        console.log('[Biometric] No session returned');
+        return false;
+      }
+
+      console.log('[Biometric] Session restored successfully');
+      
+      // Set session in store
+      set({ 
+        session: data.session, 
+        user: data.session.user,
+        biometricEnabled: true 
+      });
+      
+      // Fetch profile
+      const fetchedProfile = await get().fetchProfile(data.session.user.id);
+      
+      if (!fetchedProfile) {
+        console.error('[Biometric] Failed to fetch profile');
+        return false;
+      }
+
+      console.log('[Biometric] Login complete');
+      return true;
+
     } catch (error) {
-      console.error('Biometric check error:', error);
+      console.error('[Biometric] Unexpected error:', error);
+      
+      // Clean up on any unexpected error
+      await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+      await SecureStore.setItemAsync('biometric_enabled', 'false').catch(() => {});
+      set({ biometricEnabled: false });
+      
       return false;
     }
   },

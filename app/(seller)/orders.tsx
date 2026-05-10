@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
@@ -28,7 +28,7 @@ export default function AdminOrdersScreen() {
 
   const fetchOrders = async () => {
     if (!profile?.id) return;
-    
+
     // First find the seller's store
     const { data: storeData } = await supabase
       .from("stores")
@@ -48,7 +48,7 @@ export default function AdminOrdersScreen() {
       )
       .eq("store_id", storeData.id)
       .order("created_at", { ascending: false });
-      
+
     setOrders(data ?? []);
     setLoading(false);
   };
@@ -65,14 +65,14 @@ export default function AdminOrdersScreen() {
   };
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <View style={{ padding: 20, paddingBottom: 8 }}>
-        <Text style={{ color: "#fff", fontSize: 24, fontWeight: "700" }}>
+        <Text style={{ color: "#000000", fontSize: 24, fontWeight: "700" }}>
           Manage orders
         </Text>
       </View>
       {loading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={orders}
@@ -130,7 +130,7 @@ export default function AdminOrdersScreen() {
           )}
         />
       )}
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderId: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  orderId: { color: "#000000", fontWeight: "700", fontSize: 14 },
   amount: { color: colors.accent, fontWeight: "700", fontSize: 14 },
-  customer: { color: "#fff", fontSize: 13 },
+  customer: { color: "#000000", fontSize: 13 },
   meta: { color: colors.textMuted, fontSize: 12 },
   statusBadge: {
     paddingHorizontal: 12,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   nextBtnText: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",

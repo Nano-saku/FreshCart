@@ -10,7 +10,7 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
@@ -49,7 +49,10 @@ export default function AdminProductsScreen() {
   };
 
   const fetchCategories = async () => {
-    const { data } = await supabase.from("categories").select("*").order("name");
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .order("name");
     setCategories(data ?? []);
   };
 
@@ -60,7 +63,13 @@ export default function AdminProductsScreen() {
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: "", description: "", unit: "piece", category_id: "", image_url: "" });
+    setForm({
+      name: "",
+      description: "",
+      unit: "piece",
+      category_id: "",
+      image_url: "",
+    });
     setModalVisible(true);
   };
 
@@ -122,7 +131,10 @@ export default function AdminProductsScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          const { error } = await supabase.from("products").delete().eq("id", id);
+          const { error } = await supabase
+            .from("products")
+            .delete()
+            .eq("id", id);
           if (error) {
             Alert.alert("Error", "Failed to delete product");
           } else {
@@ -133,16 +145,16 @@ export default function AdminProductsScreen() {
     ]);
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <View style={styles.header}>
         <Text style={styles.title}>Products</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color="#fff" />
+          <Plus size={20} color="#000000" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={products}
@@ -157,7 +169,9 @@ export default function AdminProductsScreen() {
                     {item.category?.name || "No category"} • {item.unit}
                   </Text>
                   {item.description ? (
-                    <Text style={styles.meta} numberOfLines={1}>{item.description}</Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {item.description}
+                    </Text>
                   ) : null}
                 </View>
                 <View style={styles.actions}>
@@ -209,12 +223,15 @@ export default function AdminProductsScreen() {
                       styles.categoryChip,
                       form.category_id === cat.id && styles.categoryChipActive,
                     ]}
-                    onPress={() => setForm((f) => ({ ...f, category_id: cat.id }))}
+                    onPress={() =>
+                      setForm((f) => ({ ...f, category_id: cat.id }))
+                    }
                   >
                     <Text
                       style={[
                         styles.categoryChipText,
-                        form.category_id === cat.id && styles.categoryChipTextActive,
+                        form.category_id === cat.id &&
+                          styles.categoryChipTextActive,
                       ]}
                     >
                       {cat.name}
@@ -261,7 +278,9 @@ export default function AdminProductsScreen() {
 
               <ImagePickerButton
                 currentImage={form.image_url}
-                onImageSelected={(url) => setForm((f) => ({ ...f, image_url: url || "" }))}
+                onImageSelected={(url) =>
+                  setForm((f) => ({ ...f, image_url: url || "" }))
+                }
                 bucket="products"
                 path="product-images"
                 label="Product Image"
@@ -283,9 +302,11 @@ export default function AdminProductsScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color="#000000" size="small" />
                   ) : (
-                    <Text style={{ color: "#fff", fontWeight: "700" }}>Save</Text>
+                    <Text style={{ color: "#000000", fontWeight: "700" }}>
+                      Save
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -293,7 +314,7 @@ export default function AdminProductsScreen() {
           </BlurView>
         </View>
       </Modal>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -305,7 +326,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  title: { color: "#a8f7f6", fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
@@ -326,7 +347,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  productName: { color: "#fff", fontWeight: "600", fontSize: 14 },
+  productName: { color: "#000000", fontWeight: "600", fontSize: 14 },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   empty: {
     color: colors.textMuted,
@@ -357,7 +378,7 @@ const styles = StyleSheet.create({
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.85)", padding: 24, gap: 4 },
   modalTitle: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
@@ -372,7 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
     padding: 14,
-    color: "#fff",
+    color: "#000000",
     fontSize: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
@@ -401,7 +422,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   categoryChipTextActive: {
-    color: "#fff",
+    color: "#000000",
     fontWeight: "700",
   },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },

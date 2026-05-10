@@ -8,16 +8,14 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
-import { BlurView } from "expo-blur";
+import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
-import { useLocalSearchParams, router } from "expo-router";
-import { OrderStatusBadge, STATUS_COLORS } from "../../src/components/OrderStatus";
-import { Package, Clock } from "lucide-react-native";
+import { router } from "expo-router";
+import { OrderStatusBadge } from "../../src/components/OrderStatus";
+import { Package, Clock, ChevronRight } from "lucide-react-native";
 
 export default function OrdersScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,10 +32,12 @@ export default function OrdersScreen() {
       }
 
       const { data, error } = await supabase
-       .from("orders")
-        .select(`*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`)
-        .eq("id", id)
-        .single();
+        .from("orders")
+        .select(
+          `*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
+        )
+        .eq("customer_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setOrders(data ?? []);
@@ -57,13 +57,12 @@ export default function OrdersScreen() {
   useEffect(() => {
     fetchOrders();
 
-    // Realtime order status updates
     const channel = supabase
       .channel("my-orders")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "orders" },
-        () => fetchOrders()
+        () => fetchOrders(),
       )
       .subscribe();
 
@@ -73,76 +72,88 @@ export default function OrdersScreen() {
   }, []);
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <View style={styles.header}>
-        <Text style={styles.title}>My orders</Text>
+        <Text style={styles.title}>My Orders</Text>
         <Text style={styles.subtitle}>
           {orders.length} order{orders.length !== 1 ? "s" : ""}
         </Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
           }
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => router.push(`/(customer)/order/${item.id}`)}
               activeOpacity={0.85}
+              style={styles.orderCard}
             >
-              <BlurView intensity={30} tint="light" style={styles.card}>
-                <View style={styles.cardInner}>
-                  <View style={styles.row}>
-                    <View style={styles.orderIdContainer}>
-                      <Package size={16} color={colors.accent} />
-                      <Text style={styles.orderId}>
-                        #{item.id.slice(0, 8).toUpperCase()}
-                      </Text>
-                    </View>
-                    <OrderStatusBadge status={item.status} size="sm" />
-                  </View>
-
-                  <Text style={styles.storeName}>{item.store?.name || "Unknown Store"}</Text>
-
-                  <View style={styles.row}>
-                    <View style={styles.metaContainer}>
-                      <Clock size={12} color={colors.textMuted} />
-                      <Text style={styles.meta}>
-                        {new Date(item.created_at).toLocaleDateString("en-PH", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </View>
-                    <View style={styles.metaContainer}>
-                      <Text style={styles.meta}>
-                        {item.order_items?.length || 0} item{item.order_items?.length !== 1 ? "s" : ""}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.amountRow}>
-                    <Text style={styles.amount}>
-                      ₱{item.total_amount?.toFixed(2)}
+              <View style={styles.cardInner}>
+                <View style={styles.row}>
+                  <View style={styles.orderIdContainer}>
+                    <Package size={16} color={colors.primary} />
+                    <Text style={styles.orderId}>
+                      #{item.id.slice(0, 8).toUpperCase()}
                     </Text>
-                    <Text style={styles.trackText}>Tap to track →</Text>
+                  </View>
+                  <OrderStatusBadge status={item.status} size="sm" />
+                </View>
+
+                <Text style={styles.storeName}>
+                  {item.store?.name || "Unknown Store"}
+                </Text>
+
+                <View style={styles.row}>
+                  <View style={styles.metaContainer}>
+                    <Clock size={12} color={colors.textMuted} />
+                    <Text style={styles.meta}>
+                      {new Date(item.created_at).toLocaleDateString("en-PH", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.meta}>
+                    {item.order_items?.length || 0} item
+                    {item.order_items?.length !== 1 ? "s" : ""}
+                  </Text>
+                </View>
+
+                <View style={styles.amountRow}>
+                  <Text style={styles.amount}>
+                    ${item.total_amount?.toFixed(2)}
+                  </Text>
+                  <View style={styles.trackBtn}>
+                    <Text style={styles.trackText}>Track</Text>
+                    <ChevronRight size={14} color={colors.primary} />
                   </View>
                 </View>
-              </BlurView>
+              </View>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Package size={48} color={colors.textMuted} />
-              <Text style={styles.empty}>No orders yet</Text>
+              <View style={styles.emptyIcon}>
+                <Package size={48} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>No orders yet</Text>
+              <Text style={styles.emptySub}>
+                Start shopping to see your orders here
+              </Text>
               <TouchableOpacity
                 style={styles.browseBtn}
                 onPress={() => router.push("/(customer)")}
@@ -153,21 +164,38 @@ export default function OrdersScreen() {
           }
         />
       )}
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 20, paddingBottom: 8 },
-  title: { color: "#fff", fontSize: 24, fontWeight: "700" },
-  subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  card: {
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+  header: {
+    marginBottom: 20,
   },
-  cardInner: { backgroundColor: colors.glass, padding: 16, gap: 8 },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  orderCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    marginBottom: 12,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardInner: {
+    padding: 16,
+    gap: 8,
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -178,47 +206,88 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  orderId: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  storeName: { color: colors.textMuted, fontSize: 13 },
+  orderId: {
+    color: colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  storeName: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
   metaContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  meta: { color: colors.textMuted, fontSize: 12 },
+  meta: {
+    color: colors.textMuted,
+    fontSize: 12,
+  },
   amountRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
+    borderTopColor: colors.divider,
   },
-  amount: { color: colors.accent, fontWeight: "700", fontSize: 16 },
-  trackText: { color: colors.textMuted, fontSize: 12 },
+  amount: {
+    color: colors.primary,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  trackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  trackText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 80,
     gap: 16,
   },
-  empty: {
-    color: colors.textMuted,
+  emptyIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primary + "10",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  emptySub: {
+    color: colors.textSecondary,
+    fontSize: 14,
     textAlign: "center",
-    fontSize: 16,
   },
   browseBtn: {
-    backgroundColor: colors.accent + "30",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.accent + "50",
+    borderColor: colors.primary + "30",
+    marginTop: 8,
   },
   browseText: {
-    color: colors.accent,
+    color: colors.primary,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 15,
   },
 });

@@ -1,5 +1,12 @@
 import { View, Text, StyleSheet } from "react-native";
-import { CheckCircle2, Circle, Clock, Truck, Package, XCircle } from "lucide-react-native";
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  Truck,
+  Package,
+  XCircle,
+} from "lucide-react-native";
 import { colors } from "../constants/colors";
 
 export const STEPS = [
@@ -9,7 +16,7 @@ export const STEPS = [
   "out_for_delivery",
   "delivered",
 ] as const;
-export type OrderStatus = typeof STEPS[number] | string;
+export type OrderStatus = (typeof STEPS)[number] | string;
 
 export const STEP_LABELS: Record<string, string> = {
   pending: "Order placed",
@@ -20,12 +27,12 @@ export const STEP_LABELS: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  pending: "#ffeb3b",
-  confirmed: "#64b5f6",
-  preparing: "#ffa726",
-  out_for_delivery: "#a8e063",
-  delivered: "#4caf50",
-  cancelled: "#ef5350",
+  pending: "#FFC107",
+  confirmed: "#2196F3",
+  preparing: "#FF9800",
+  out_for_delivery: "#4CAF50",
+  delivered: "#4CAF50",
+  cancelled: "#F44336",
 };
 
 interface OrderStatusProps {
@@ -34,7 +41,13 @@ interface OrderStatusProps {
   size?: "sm" | "md" | "lg";
 }
 
-export function OrderStatusBadge({ status, size = "md" }: { status: string; size?: "sm" | "md" | "lg" }) {
+export function OrderStatusBadge({
+  status,
+  size = "md",
+}: {
+  status: string;
+  size?: "sm" | "md" | "lg";
+}) {
   const color = STATUS_COLORS[status] || colors.textMuted;
 
   const sizeStyles = {
@@ -46,7 +59,12 @@ export function OrderStatusBadge({ status, size = "md" }: { status: string; size
   const s = sizeStyles[size];
 
   return (
-    <View style={[styles.badge, { backgroundColor: color + "22", borderColor: color + "55" }]}>
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: color + "15", borderColor: color + "40" },
+      ]}
+    >
       <Text style={[styles.badgeText, { color, fontSize: s.fontSize }]}>
         {status.replace(/_/g, " ")}
       </Text>
@@ -55,14 +73,14 @@ export function OrderStatusBadge({ status, size = "md" }: { status: string; size
 }
 
 export function OrderStatusSteps({ status }: { status: string }) {
-  const currentStep = STEPS.indexOf(status as typeof STEPS[number]);  // cast string to literal for index lookup
+  const currentStep = STEPS.indexOf(status as (typeof STEPS)[number]);
   const isCancelled = status === "cancelled";
 
   if (isCancelled) {
     return (
       <View style={styles.stepsContainer}>
         <View style={styles.cancelledContainer}>
-          <XCircle size={24} color="#ef5350" />
+          <XCircle size={24} color={colors.error} />
           <Text style={styles.cancelledText}>Order Cancelled</Text>
         </View>
       </View>
@@ -82,24 +100,22 @@ export function OrderStatusSteps({ status }: { status: string }) {
               {done ? (
                 <CheckCircle2
                   size={22}
-                  color={colors.accent}
-                  fill={colors.primary}
+                  color={colors.primary}
+                  fill={colors.primaryLight + "40"}
                 />
               ) : active ? (
                 <View style={styles.activeDot}>
                   <View style={styles.innerDot} />
                 </View>
               ) : (
-                <Circle size={22} color="rgba(255,255,255,0.25)" />
+                <Circle size={22} color={colors.border} />
               )}
               {!isLast && (
                 <View
                   style={[
                     styles.line,
                     {
-                      backgroundColor: done
-                        ? "rgba(168,224,99,0.5)"
-                        : "rgba(255,255,255,0.12)",
+                      backgroundColor: done ? colors.primary : colors.border,
                     },
                   ]}
                 />
@@ -111,18 +127,16 @@ export function OrderStatusSteps({ status }: { status: string }) {
                   styles.stepLabel,
                   {
                     color: done
-                      ? colors.accent
+                      ? colors.primary
                       : active
-                        ? "#fff"
-                        : "rgba(255,255,255,0.35)",
+                        ? colors.textPrimary
+                        : colors.textMuted,
                   },
                 ]}
               >
                 {STEP_LABELS[step]}
               </Text>
-              {active && (
-                <Text style={styles.stepTime}>In progress</Text>
-              )}
+              {active && <Text style={styles.stepTime}>In progress</Text>}
             </View>
           </View>
         );
@@ -162,11 +176,11 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.85)",
+    backgroundColor: colors.primaryLight + "30",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(168,224,99,0.5)",
+    borderColor: colors.primary,
   },
   innerDot: {
     width: 10,
@@ -185,7 +199,7 @@ const styles = StyleSheet.create({
   },
   stepTime: {
     fontSize: 11,
-    color: colors.accent,
+    color: colors.primary,
     marginTop: 2,
   },
   cancelledContainer: {
@@ -193,13 +207,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 16,
-    backgroundColor: "rgba(239,83,80,0.1)",
+    backgroundColor: colors.error + "10",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(239,83,80,0.3)",
+    borderColor: colors.error + "30",
   },
   cancelledText: {
-    color: "#ef5350",
+    color: colors.error,
     fontSize: 14,
     fontWeight: "600",
   },

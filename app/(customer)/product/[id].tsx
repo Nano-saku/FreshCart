@@ -11,7 +11,7 @@ import {
   Animated,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { GreenScreen } from "../../../src/components/GreenScreen";
+import { GreenScreen } from "../../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
@@ -27,10 +27,12 @@ export default function ProductDetailScreen() {
   const addItem = useCartStore((s) => s.addItem);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
- useEffect(() => {
+  useEffect(() => {
     supabase
       .from("store_products")
-      .select(`*, product:products(*, category:categories(name)), store:stores(name, address)`)
+      .select(
+        `*, product:products(*, category:categories(name)), store:stores(name, address)`,
+      )
       .eq("id", id)
       .single()
       .then(({ data, error }) => {
@@ -131,7 +133,9 @@ export default function ProductDetailScreen() {
             </View>
           ) : isLowStock ? (
             <View style={[styles.stockBadge, { backgroundColor: "#ffa726" }]}>
-              <Text style={styles.stockText}>Only {product.stock_qty} left</Text>
+              <Text style={styles.stockText}>
+                Only {product.stock_qty} left
+              </Text>
             </View>
           ) : null}
         </View>
@@ -158,12 +162,16 @@ export default function ProductDetailScreen() {
               </View>
               <View style={[styles.metaPill, styles.ratingPill]}>
                 <Star size={12} color="#FFD700" fill="#FFD700" />
-                <Text style={[styles.metaText, { color: "#FFD700" }]}> 4.8</Text>
+                <Text style={[styles.metaText, { color: "#FFD700" }]}>
+                  {" "}
+                  4.8
+                </Text>
               </View>
             </View>
 
             <Text style={styles.description}>
-              {product?.product?.description || "Fresh and locally sourced. Quality guaranteed."}
+              {product?.product?.description ||
+                "Fresh and locally sourced. Quality guaranteed."}
             </Text>
 
             <Text style={styles.price}>₱{product?.price?.toFixed(2)}</Text>
@@ -175,7 +183,12 @@ export default function ProductDetailScreen() {
                 onPress={() => setQty(Math.max(1, qty - 1))}
                 disabled={qty <= 1}
               >
-                <Text style={[styles.qtyBtnText, qty <= 1 && styles.qtyBtnTextDisabled]}>
+                <Text
+                  style={[
+                    styles.qtyBtnText,
+                    qty <= 1 && styles.qtyBtnTextDisabled,
+                  ]}
+                >
                   −
                 </Text>
               </TouchableOpacity>
@@ -183,11 +196,21 @@ export default function ProductDetailScreen() {
               <Text style={styles.qtyNum}>{qty}</Text>
 
               <TouchableOpacity
-                style={[styles.qtyBtn, qty >= product?.stock_qty && styles.qtyBtnDisabled]}
-                onPress={() => setQty(Math.min(product?.stock_qty || 99, qty + 1))}
+                style={[
+                  styles.qtyBtn,
+                  qty >= product?.stock_qty && styles.qtyBtnDisabled,
+                ]}
+                onPress={() =>
+                  setQty(Math.min(product?.stock_qty || 99, qty + 1))
+                }
                 disabled={qty >= (product?.stock_qty || 99)}
               >
-                <Text style={[styles.qtyBtnText, qty >= product?.stock_qty && styles.qtyBtnTextDisabled]}>
+                <Text
+                  style={[
+                    styles.qtyBtnText,
+                    qty >= product?.stock_qty && styles.qtyBtnTextDisabled,
+                  ]}
+                >
                   +
                 </Text>
               </TouchableOpacity>
@@ -215,7 +238,9 @@ export default function ProductDetailScreen() {
                 ) : isOutOfStock ? (
                   <>
                     <ShoppingCart size={20} color={colors.textMuted} />
-                    <Text style={[styles.addCartText, { color: colors.textMuted }]}>
+                    <Text
+                      style={[styles.addCartText, { color: colors.textMuted }]}
+                    >
                       Out of Stock
                     </Text>
                   </>

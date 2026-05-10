@@ -10,7 +10,7 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
@@ -45,25 +45,25 @@ export default function AdminUsersScreen() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUsers = async () => {
-  setLoading(true);
-  const { data, error, count } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false });
+    setLoading(true);
+    const { data, error, count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
 
-  console.log("Data:", data);
-  console.log("Error:", error);
-  console.log("Count:", count);
-  console.log("Data length:", data?.length);
+    console.log("Data:", data);
+    console.log("Error:", error);
+    console.log("Count:", count);
+    console.log("Data length:", data?.length);
 
-  if (error) {
-    console.error("Error fetching users:", error);
-    Alert.alert("Error", "Failed to load users");
-  } else {
-    setUsers(data ?? []);
-  }
-  setLoading(false);
-};
+    if (error) {
+      console.error("Error fetching users:", error);
+      Alert.alert("Error", "Failed to load users");
+    } else {
+      setUsers(data ?? []);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -187,7 +187,7 @@ export default function AdminUsersScreen() {
 
               Alert.alert(
                 "User Removed",
-                "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard."
+                "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard.",
               );
               setModalVisible(false);
               fetchUsers();
@@ -217,7 +217,7 @@ export default function AdminUsersScreen() {
   };
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <View style={styles.header}>
         <Text style={styles.title}>Users</Text>
         <Text style={styles.subtitle}>{users.length} total users</Text>
@@ -412,7 +412,7 @@ export default function AdminUsersScreen() {
           </BlurView>
         </View>
       </Modal>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
-    color: "#fff",
+    color: "#a8f7f6",
     fontSize: 24,
     fontWeight: "700",
   },

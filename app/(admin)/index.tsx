@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
@@ -85,11 +85,11 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.title}>Admin dashboard</Text>
         {loading ? (
-          <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+          <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
         ) : (
           <>
             <View style={styles.statsGrid}>
@@ -140,12 +140,17 @@ export default function AdminDashboard() {
           </>
         )}
       </ScrollView>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { color: "#fff", fontSize: 24, fontWeight: "700", marginBottom: 20 },
+  title: {
+    color: "#000000",
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 20,
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -160,10 +165,10 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
   },
   statInner: { backgroundColor: colors.glass, padding: 18, gap: 6 },
-  statVal: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  statVal: { color: "#000000", fontSize: 24, fontWeight: "800" },
   statLabel: { color: colors.textMuted, fontSize: 12 },
   sectionTitle: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
@@ -181,7 +186,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderCustomer: { color: "#fff", fontWeight: "600", fontSize: 14 },
+  orderCustomer: { color: "#000000", fontWeight: "600", fontSize: 14 },
   orderStore: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   orderAmount: { color: colors.accent, fontWeight: "700", fontSize: 14 },
   statusBadge: {

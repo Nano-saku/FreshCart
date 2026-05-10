@@ -1,22 +1,38 @@
-// src/components/ProfileScreen.tsx
-// Shared profile screen for all user types (customer, admin, seller)
-
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, Switch } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { LinearGradient } from 'expo-linear-gradient';
-import { LogOut, User, Shield, ChevronRight, Settings } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  Switch,
+  StyleSheet,
+} from "react-native";
+import { useState, useEffect } from "react";
+import { useAuthStore } from "../stores/authStore";
+import { AppScreen } from "../../src/components/AppScreen";
+import { colors } from "../../src/constants/colors";
+import {
+  LogOut,
+  User,
+  Shield,
+  ChevronRight,
+  Settings,
+  Bell,
+  MapPin,
+  CreditCard,
+} from "lucide-react-native";
 
 export default function ProfileScreen() {
-  const { 
-    user, 
-    profile, 
-    signOut, 
-    softSignOut, 
-    biometricEnabled, 
-    setBiometricEnabled 
+  const {
+    user,
+    profile,
+    signOut,
+    softSignOut,
+    biometricEnabled,
+    setBiometricEnabled,
   } = useAuthStore();
-  
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [biometricToggle, setBiometricToggle] = useState(biometricEnabled);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -30,26 +46,24 @@ export default function ProfileScreen() {
       setBiometricToggle(value);
       await setBiometricEnabled(value);
       Alert.alert(
-        'Success',
-        value 
-          ? 'Biometric authentication enabled. You can now use fingerprint to log in.' 
-          : 'Biometric authentication disabled.'
+        "Success",
+        value
+          ? "Biometric authentication enabled. You can now use fingerprint to log in."
+          : "Biometric authentication disabled.",
       );
     } catch (error) {
       setBiometricToggle(!value);
-      Alert.alert('Error', 'Failed to update biometric settings');
+      Alert.alert("Error", "Failed to update biometric settings");
     }
   };
 
   const handleSoftLogout = async () => {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
-    
     try {
       await softSignOut();
-      // Router will automatically redirect via root layout
     } catch (error) {
-      Alert.alert('Error', 'Failed to log out');
+      Alert.alert("Error", "Failed to log out");
       setIsLoggingOut(false);
     }
   };
@@ -57,116 +71,149 @@ export default function ProfileScreen() {
   const handleFullLogout = async () => {
     setShowLogoutModal(false);
     setIsLoggingOut(true);
-    
     try {
       await signOut();
-      // Router will automatically redirect via root layout
     } catch (error) {
-      Alert.alert('Error', 'Failed to log out');
+      Alert.alert("Error", "Failed to log out");
       setIsLoggingOut(false);
     }
   };
 
-  // Get role-specific badge color
-  const getRoleBadgeColor = () => {
+  const getRoleBadgeStyle = () => {
     switch (profile?.role) {
-      case 'admin':
-        return 'bg-purple-500/30 border-purple-500/50';
-      case 'seller':
-        return 'bg-blue-500/30 border-blue-500/50';
+      case "admin":
+        return {
+          backgroundColor: colors.error + "15",
+          borderColor: colors.error + "40",
+          color: colors.error,
+        };
+      case "seller":
+        return {
+          backgroundColor: colors.warning + "15",
+          borderColor: colors.warning + "40",
+          color: colors.warning,
+        };
       default:
-        return 'bg-green-500/30 border-green-500/50';
+        return {
+          backgroundColor: colors.primary + "15",
+          borderColor: colors.primary + "40",
+          color: colors.primary,
+        };
     }
   };
 
+  const roleStyle = getRoleBadgeStyle();
+
+  const menuItems = [
+    { icon: MapPin, label: "Delivery Addresses", color: colors.textPrimary },
+    { icon: CreditCard, label: "Payment Methods", color: colors.textPrimary },
+    { icon: Bell, label: "Notifications", color: colors.textPrimary },
+    { icon: Settings, label: "Settings", color: colors.textPrimary },
+  ];
+
   return (
-    <LinearGradient
-      colors={['#1a4a1a', '#2d7a2d', '#4caf50', '#a8e063']}
-      className="flex-1"
-    >
-      <ScrollView className="flex-1 px-6 pt-16">
+    <AppScreen>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
-        <View className="items-center mb-8">
-          <View className="w-24 h-24 rounded-full bg-white/20 items-center justify-center mb-4 border-2 border-white/30">
-            <User size={48} color="#fff" />
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <User size={40} color={colors.primary} />
           </View>
-          <Text className="text-2xl font-bold text-white mb-1">
-            {profile?.full_name || 'User'}
-          </Text>
-          <Text className="text-white/70 text-base mb-2">
-            {user?.email}
-          </Text>
-          <View className={`px-4 py-1.5 rounded-full border ${getRoleBadgeColor()}`}>
-            <Text className="text-white text-xs font-semibold uppercase tracking-wide">
-              {profile?.role || 'Customer'}
+          <Text style={styles.name}>{profile?.full_name || "User"}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          <View
+            style={[
+              styles.badge,
+              {
+                backgroundColor: roleStyle.backgroundColor,
+                borderColor: roleStyle.borderColor,
+              },
+            ]}
+          >
+            <Text style={[styles.badgeText, { color: roleStyle.color }]}>
+              {profile?.role || "Customer"}
             </Text>
           </View>
         </View>
 
-        {/* Security Section */}
-        <View className="mb-6">
-          <Text className="text-white/60 text-xs font-semibold uppercase mb-3 px-2">
-            Security
-          </Text>
-          
-          {/* Biometric Settings */}
-          <View className="bg-white/10 rounded-2xl p-4 mb-3 border border-white/20">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3 flex-1">
-                <View className="w-10 h-10 rounded-full bg-[#a8e063]/20 items-center justify-center">
-                  <Shield size={20} color="#a8e063" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-semibold text-base">
-                    Biometric Login
-                  </Text>
-                  <Text className="text-white/60 text-sm">
-                    Use fingerprint to sign in quickly
-                  </Text>
-                </View>
+        {/* Menu Items */}
+        <View style={styles.menuSection}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.menuIcon,
+                  { backgroundColor: colors.primary + "10" },
+                ]}
+              >
+                <item.icon size={20} color={colors.primary} />
               </View>
-              <Switch
-                value={biometricToggle}
-                onValueChange={handleBiometricToggle}
-                trackColor={{ false: '#767577', true: '#a8e063' }}
-                thumbColor={biometricToggle ? '#2d7a2d' : '#f4f3f4'}
-              />
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <ChevronRight size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Security Section */}
+        <Text style={styles.sectionTitle}>Security</Text>
+        <View style={styles.card}>
+          <View style={styles.cardInner}>
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: colors.primary + "10" },
+              ]}
+            >
+              <Shield size={20} color={colors.primary} />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Biometric Login</Text>
+              <Text style={styles.cardSubtitle}>
+                Use fingerprint to sign in quickly
+              </Text>
+            </View>
+            <Switch
+              value={biometricToggle}
+              onValueChange={handleBiometricToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={biometricToggle ? colors.surface : colors.textMuted}
+            />
           </View>
         </View>
 
         {/* Account Section */}
-        <View className="mb-6">
-          <Text className="text-white/60 text-xs font-semibold uppercase mb-3 px-2">
-            Account
-          </Text>
-          
-          {/* Logout Button */}
-          <TouchableOpacity
-            onPress={() => setShowLogoutModal(true)}
-            disabled={isLoggingOut}
-            className="bg-white/10 rounded-2xl p-4 border border-red-500/30"
-          >
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3">
-                <View className="w-10 h-10 rounded-full bg-red-500/20 items-center justify-center">
-                  <LogOut size={20} color="#ef4444" />
-                </View>
-                <Text className="text-red-400 font-semibold text-base">
-                  {isLoggingOut ? 'Logging out...' : 'Log Out'}
-                </Text>
-              </View>
-              {!isLoggingOut && <ChevronRight size={20} color="#ef4444" />}
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity
+          onPress={() => setShowLogoutModal(true)}
+          disabled={isLoggingOut}
+          activeOpacity={0.8}
+          style={styles.logoutCard}
+        >
+          <View style={styles.cardInner}>
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: colors.error + "10" },
+              ]}
+            >
+              <LogOut size={20} color={colors.error} />
             </View>
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.cardTitle, { color: colors.error, flex: 1 }]}>
+              {isLoggingOut ? "Logging out..." : "Log Out"}
+            </Text>
+            {!isLoggingOut && <ChevronRight size={20} color={colors.error} />}
+          </View>
+        </TouchableOpacity>
 
         {/* App Info */}
-        <View className="items-center mt-8 mb-8">
-          <Text className="text-white/40 text-xs">
-            FreshCart v1.0.0
-          </Text>
-        </View>
+        <Text style={styles.version}>FreshCart v1.0.0</Text>
       </ScrollView>
 
       {/* Logout Modal */}
@@ -176,71 +223,279 @@ export default function ProfileScreen() {
         animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
-        <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <View className="bg-white rounded-3xl p-6 w-full max-w-sm">
-            {/* Modal Header */}
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center mb-3">
-                <LogOut size={28} color="#f97316" />
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalInner}>
+              <View style={styles.modalHeader}>
+                <View
+                  style={[
+                    styles.modalIcon,
+                    { backgroundColor: colors.warning + "15" },
+                  ]}
+                >
+                  <LogOut size={28} color={colors.warning} />
+                </View>
+                <Text style={styles.modalTitle}>Choose Logout Option</Text>
+                <Text style={styles.modalSubtitle}>
+                  Would you like to keep biometric access for quick login, or
+                  fully log out?
+                </Text>
               </View>
-              <Text className="text-xl font-bold text-gray-900 mb-2">
-                Choose Logout Option
-              </Text>
-              <Text className="text-gray-600 text-center">
-                Would you like to keep biometric access for quick login, or fully log out?
-              </Text>
-            </View>
 
-            {/* Option 1: Soft Logout (Keep Biometric) - Only show if biometric is enabled */}
-            {biometricToggle && (
-              <TouchableOpacity
-                onPress={handleSoftLogout}
-                className="bg-green-500 rounded-xl p-4 mb-3 border-2 border-green-600"
-              >
-                <View className="flex-row items-center gap-3">
+              {biometricToggle && (
+                <TouchableOpacity
+                  onPress={handleSoftLogout}
+                  style={[
+                    styles.actionBtn,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  activeOpacity={0.8}
+                >
                   <Shield size={22} color="#fff" />
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-base">
-                      Keep Biometric Access
-                    </Text>
-                    <Text className="text-white/90 text-sm mt-0.5">
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.btnTitle}>Keep Biometric Access</Text>
+                    <Text style={styles.btnSubtitle}>
                       Quick login with fingerprint next time
                     </Text>
                   </View>
-                </View>
-              </TouchableOpacity>
-            )}
+                </TouchableOpacity>
+              )}
 
-            {/* Option 2: Full Logout */}
-            <TouchableOpacity
-              onPress={handleFullLogout}
-              className="bg-red-500 rounded-xl p-4 mb-3 border-2 border-red-600"
-            >
-              <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={handleFullLogout}
+                style={[styles.actionBtn, { backgroundColor: colors.error }]}
+                activeOpacity={0.8}
+              >
                 <LogOut size={22} color="#fff" />
-                <View className="flex-1">
-                  <Text className="text-white font-bold text-base">
-                    Full Logout
-                  </Text>
-                  <Text className="text-white/90 text-sm mt-0.5">
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.btnTitle}>Full Logout</Text>
+                  <Text style={styles.btnSubtitle}>
                     Clear all credentials and sessions
                   </Text>
                 </View>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            {/* Cancel */}
-            <TouchableOpacity
-              onPress={() => setShowLogoutModal(false)}
-              className="bg-gray-100 rounded-xl p-4"
-            >
-              <Text className="text-gray-700 font-semibold text-center text-base">
-                Cancel
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowLogoutModal(false)}
+                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
-    </LinearGradient>
+    </AppScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+    paddingTop: 20,
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: colors.primary + "30",
+  },
+  name: {
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  email: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  badge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  menuSection: {
+    marginBottom: 24,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    marginBottom: 1,
+  },
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  menuLabel: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  sectionTitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 12,
+    marginLeft: 16,
+    marginTop: 8,
+  },
+  card: {
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  logoutCard: {
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.error + "20",
+  },
+  cardInner: {
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  cardSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  version: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 32,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: {
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    width: "100%",
+    maxWidth: 360,
+    shadowColor: colors.shadowColorStrong,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalInner: {
+    padding: 24,
+    gap: 4,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  actionBtn: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  btnTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  btnSubtitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    marginTop: 2,
+  },
+  cancelBtn: {
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  cancelText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});

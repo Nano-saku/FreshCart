@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,21 +8,39 @@ import {
   RefreshControl,
   ActivityIndicator,
   Dimensions,
+  Image,
+  ScrollView,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { StoreSelector } from "../../src/components/StoreSelector";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { router } from "expo-router";
-import { Bell, TrendingUp } from "lucide-react-native";
+import { Search, Bell, ShoppingBag, ChevronRight } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
+
+const CATEGORIES = [
+  { name: "Vegetables", icon: "🥬", color: "#4CAF50" },
+  { name: "Fruits", icon: "🍎", color: "#FF9800" },
+  { name: "Meats", icon: "🥩", color: "#F44336" },
+  { name: "Fish", icon: "🐟", color: "#2196F3" },
+  { name: "Eggs", icon: "🥚", color: "#FFC107" },
+  { name: "Breads", icon: "🍞", color: "#795548" },
+  { name: "Nuts", icon: "🥜", color: "#8D6E63" },
+  { name: "Honey", icon: "🍯", color: "#FFB300" },
+  { name: "Wheat", icon: "🌾", color: "#A1887F" },
+  { name: "Cheese", icon: "🧀", color: "#FFC107" },
+  { name: "Milk", icon: "🥛", color: "#90CAF9" },
+  { name: "Pasta", icon: "🍝", color: "#FFCC80" },
+];
 
 export default function HomeScreen() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const {
     data: products,
@@ -30,11 +48,13 @@ export default function HomeScreen() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["home-products", selectedStore],
+    queryKey: ["home-products", selectedStore, selectedCategory],
     queryFn: async () => {
       let query = supabase
         .from("store_products")
-        .select(`*, product:products(*, category:categories(name)), store:stores(name, logo_url)`)
+        .select(
+          `*, product:products(*, category:categories(name)), store:stores(name, logo_url)`,
+        )
         .eq("is_available", true)
         .gt("stock_qty", 0);
 
@@ -42,7 +62,13 @@ export default function HomeScreen() {
         query = query.eq("store_id", selectedStore);
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+      if (selectedCategory) {
+        query = query.ilike("product.category.name", selectedCategory);
+      }
+
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data ?? [];
     },
@@ -54,90 +80,327 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refetch]);
 
+  const renderCategoryItem = ({ item }: { item: (typeof CATEGORIES)[0] }) => (
+    <TouchableOpacity
+      style={[
+        styles.categoryItem,
+        selectedCategory === item.name && styles.categoryItemActive,
+      ]}
+      onPress={() =>
+        setSelectedCategory(selectedCategory === item.name ? null : item.name)
+      }
+      activeOpacity={0.8}
+    >
+      <View
+        style={[styles.categoryIcon, { backgroundColor: item.color + "15" }]}
+      >
+        <Text style={styles.categoryEmoji}>{item.icon}</Text>
+      </View>
+      <Text
+        style={[
+          styles.categoryName,
+          selectedCategory === item.name && styles.categoryNameActive,
+        ]}
+      >
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <GreenScreen>
+    <AppScreen noPadding>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>FreshCart</Text>
-          <Text style={styles.subGreeting}>Fresh groceries, delivered fast</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>Welcome to</Text>
+            <Text style={styles.title}>FreshCart</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => router.push("/(customer)/search")}
+            >
+              <Search size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => router.push("/(customer)/orders")}
+            >
+              <Bell size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity style={styles.notifBtn} onPress={() => router.push("/(customer)/orders")}>
-          <Bell size={20} color="#fff" />
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => router.push("/(customer)/search")}
+          activeOpacity={0.8}
+        >
+          <Search size={18} color={colors.textMuted} />
+          <Text style={styles.searchPlaceholder}>Search fresh products...</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Store Selector */}
-      <StoreSelector
-        onSelect={setSelectedStore}
-        selectedStore={selectedStore}
-      />
-
-      {/* Featured Section */}
-      <View style={styles.sectionHeader}>
-        <TrendingUp size={18} color={colors.accent} />
-        <Text style={styles.sectionTitle}>
-          {selectedStore ? "Store Products" : "Featured Products"}
-        </Text>
-      </View>
-
-      {isLoading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
-      ) : error ? (
-        <Text style={styles.errorText}>Failed to load products</Text>
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          renderItem={({ item }) => <ProductCard item={item} />}
-          contentContainerStyle={{ padding: 12, paddingBottom: 200 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No products available</Text>
-              <Text style={styles.emptySub}>Check back later for fresh items</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Promo Banner */}
+        <View style={styles.bannerContainer}>
+          <View style={styles.banner}>
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerTag}>Special Offer</Text>
+              <Text style={styles.bannerTitle}>
+                30% off your first purchase
+              </Text>
+              <TouchableOpacity style={styles.bannerBtn}>
+                <Text style={styles.bannerBtnText}>Shop Now</Text>
+                <ChevronRight size={16} color={colors.primary} />
+              </TouchableOpacity>
             </View>
-          }
+            <View style={styles.bannerImage}>
+              <Text style={{ fontSize: 60 }}>🥗</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Categories */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Categories</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={CATEGORIES}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item.name}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesList}
         />
-      )}
-    </GreenScreen>
+
+        {/* Store Selector */}
+        <StoreSelector
+          onSelect={setSelectedStore}
+          selectedStore={selectedStore}
+        />
+
+        {/* Products Section */}
+        <View style={styles.sectionHeader}>
+          <ShoppingBag size={18} color={colors.primary} />
+          <Text style={styles.sectionTitle}>
+            {selectedStore ? "Store Products" : "Featured Products"}
+          </Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        ) : error ? (
+          <Text style={styles.errorText}>Failed to load products</Text>
+        ) : (
+          <FlatList
+            data={products}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            renderItem={({ item }) => <ProductCard item={item} />}
+            contentContainerStyle={{ padding: 8, paddingBottom: 200 }}
+            scrollEnabled={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No products available</Text>
+                <Text style={styles.emptySub}>
+                  Check back later for fresh items
+                </Text>
+              </View>
+            }
+          />
+        )}
+      </ScrollView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    backgroundColor: colors.surface,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    paddingBottom: 12,
+    marginBottom: 16,
   },
-  greeting: { color: "#fff", fontSize: 28, fontWeight: "800" },
-  subGreeting: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  notifBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
+  greeting: {
+    color: colors.textMuted,
+    fontSize: 14,
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchPlaceholder: {
+    color: colors.textMuted,
+    fontSize: 15,
+    flex: 1,
+  },
+  bannerContainer: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  banner: {
+    backgroundColor: colors.primary + "10",
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.primary + "20",
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  bannerTag: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  bannerTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 12,
+    lineHeight: 26,
+  },
+  bannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bannerBtnText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  bannerImage: {
+    width: 100,
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 12,
   },
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "700",
+    flex: 1,
+  },
+  seeAll: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  categoriesList: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  categoryItem: {
+    alignItems: "center",
+    marginHorizontal: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 72,
+  },
+  categoryItemActive: {
+    backgroundColor: colors.primary + "10",
+    borderColor: colors.primary,
+  },
+  categoryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  categoryEmoji: {
+    fontSize: 24,
+  },
+  categoryName: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  categoryNameActive: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
   errorText: {
-    color: "#ef5350",
+    color: colors.error,
     textAlign: "center",
     marginTop: 40,
     fontSize: 14,
@@ -147,6 +410,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 60,
   },
-  emptyText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  emptySub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  emptyText: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emptySub: {
+    color: colors.textMuted,
+    fontSize: 13,
+    marginTop: 4,
+  },
 });

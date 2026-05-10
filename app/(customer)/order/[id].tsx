@@ -9,12 +9,22 @@ import {
   RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { GreenScreen } from "../../../src/components/GreenScreen";
-import { BlurView } from "expo-blur";
+import { AppScreen } from "../../../src/components/AppScreen";
 import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
-import { OrderStatusSteps, OrderStatusBadge } from "../../../src/components/OrderStatus";
-import { ChevronLeft, Package, MapPin, FileText, Phone } from "lucide-react-native";
+import {
+  OrderStatusSteps,
+  OrderStatusBadge,
+} from "../../../src/components/OrderStatus";
+import {
+  ChevronLeft,
+  Package,
+  MapPin,
+  FileText,
+  Phone,
+  Truck,
+  Clock,
+} from "lucide-react-native";
 
 export default function OrderTrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,7 +36,9 @@ export default function OrderTrackingScreen() {
     try {
       const { data, error } = await supabase
         .from("orders")
-        .select(`*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`)
+        .select(
+          `*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
+        )
         .eq("id", id)
         .single();
 
@@ -60,7 +72,7 @@ export default function OrderTrackingScreen() {
         },
         (payload) => {
           setOrder((prev: any) => ({ ...prev, status: payload.new.status }));
-        }
+        },
       )
       .subscribe();
 
@@ -71,15 +83,15 @@ export default function OrderTrackingScreen() {
 
   if (loading) {
     return (
-      <GreenScreen>
-        <ActivityIndicator color="#fff" style={{ flex: 1 }} />
-      </GreenScreen>
+      <AppScreen>
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </AppScreen>
     );
   }
 
   if (!order) {
     return (
-      <GreenScreen>
+      <AppScreen>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Order not found</Text>
           <TouchableOpacity
@@ -89,43 +101,46 @@ export default function OrderTrackingScreen() {
             <Text style={styles.backBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      </GreenScreen>
+      </AppScreen>
     );
   }
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.backBtn}
+            style={styles.iconBtn}
             onPress={() => router.back()}
           >
-            <ChevronLeft size={20} color="#fff" />
+            <ChevronLeft size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Order tracking</Text>
-          <View style={{ width: 38 }} />
+          <Text style={styles.title}>Track Order</Text>
+          <View style={{ width: 42 }} />
         </View>
 
         {/* Order ID & Store */}
-        <Text style={styles.orderId}>#{id?.slice(0, 8).toUpperCase()}</Text>
-        <Text style={styles.storeName}>{order?.store?.name}</Text>
+        <View style={styles.orderHeader}>
+          <Text style={styles.orderId}>#{id?.slice(0, 8).toUpperCase()}</Text>
+          <Text style={styles.storeName}>{order?.store?.name}</Text>
+        </View>
 
-        {/* Status Steps */}
-        <BlurView
-          intensity={30}
-          tint="light"
-          style={[styles.card, { marginTop: 20 }]}
-        >
-          <View style={styles.cardInner}>
-            <View style={styles.statusHeader}>
-              <OrderStatusBadge status={order?.status} size="md" />
+        {/* Status Card */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <OrderStatusBadge status={order?.status} size="md" />
+            <View style={styles.dateBadge}>
+              <Clock size={14} color={colors.primary} />
               <Text style={styles.statusDate}>
                 {new Date(order?.created_at).toLocaleDateString("en-PH", {
                   month: "short",
@@ -134,102 +149,95 @@ export default function OrderTrackingScreen() {
                 })}
               </Text>
             </View>
-            <OrderStatusSteps status={order?.status} />
           </View>
-        </BlurView>
+          <OrderStatusSteps status={order?.status} />
+        </View>
 
         {/* Order Items */}
-        <BlurView
-          intensity={30}
-          tint="light"
-          style={[styles.card, { marginTop: 12 }]}
-        >
-          <View style={styles.cardInner}>
-            <View style={styles.sectionHeader}>
-              <Package size={18} color={colors.accent} />
-              <Text style={styles.sectionTitle}>Items ordered</Text>
-            </View>
-
-            {order?.order_items?.map((item: any) => (
-              <View key={item.id} style={styles.itemRow}>
-                <Text style={styles.itemName}>
-                  {item.store_product?.product?.name}
-                </Text>
-                <View style={styles.itemRight}>
-                  <Text style={styles.itemQty}>x{item.quantity}</Text>
-                  <Text style={styles.itemPrice}>
-                    ₱{(item.unit_price * item.quantity).toFixed(2)}
-                  </Text>
-                </View>
-              </View>
-            ))}
-
-            <View style={styles.divider} />
-
-            <View style={styles.itemRow}>
-              <Text style={[styles.itemName, { color: "#fff", fontWeight: "700" }]}>
-                Total
-              </Text>
-              <Text
-                style={[
-                  styles.itemPrice,
-                  { color: colors.accent, fontWeight: "700", fontSize: 16 },
-                ]}
-              >
-                ₱{order?.total_amount?.toFixed(2)}
-              </Text>
-            </View>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Package size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>Items Ordered</Text>
           </View>
-        </BlurView>
+
+          {order?.order_items?.map((item: any) => (
+            <View key={item.id} style={styles.itemRow}>
+              <View style={styles.itemDot} />
+              <Text style={styles.itemName}>
+                {item.store_product?.product?.name}
+              </Text>
+              <View style={styles.itemRight}>
+                <Text style={styles.itemQty}>x{item.quantity}</Text>
+                <Text style={styles.itemPrice}>
+                  ${(item.unit_price * item.quantity).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.divider} />
+
+          <View style={styles.itemRow}>
+            <Text
+              style={[
+                styles.itemName,
+                { color: colors.textPrimary, fontWeight: "700" },
+              ]}
+            >
+              Total
+            </Text>
+            <Text style={styles.totalPrice}>
+              ${order?.total_amount?.toFixed(2)}
+            </Text>
+          </View>
+        </View>
 
         {/* Delivery Info */}
-        <BlurView
-          intensity={30}
-          tint="light"
-          style={[styles.card, { marginTop: 12 }]}
-        >
-          <View style={styles.cardInner}>
-            <View style={styles.sectionHeader}>
-              <MapPin size={18} color={colors.accent} />
-              <Text style={styles.sectionTitle}>Delivery details</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Address</Text>
-              <Text style={styles.infoValue}>{order?.delivery_address}</Text>
-            </View>
-
-            {order?.notes && (
-              <View style={styles.infoRow}>
-                <FileText size={14} color={colors.textMuted} />
-                <Text style={[styles.infoValue, { marginLeft: 8 }]}>
-                  {order.notes}
-                </Text>
-              </View>
-            )}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MapPin size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>Delivery Details</Text>
           </View>
-        </BlurView>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Address</Text>
+            <Text style={styles.infoValue}>{order?.delivery_address}</Text>
+          </View>
+
+          {order?.notes && (
+            <View style={styles.infoRow}>
+              <FileText size={16} color={colors.textMuted} />
+              <Text style={[styles.infoValue, { marginLeft: 8 }]}>
+                {order.notes}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Store Contact */}
         {order?.store?.phone && (
-          <BlurView
-            intensity={30}
-            tint="light"
-            style={[styles.card, { marginTop: 12 }]}
-          >
-            <View style={styles.cardInner}>
-              <View style={styles.sectionHeader}>
-                <Phone size={18} color={colors.accent} />
-                <Text style={styles.sectionTitle}>Store contact</Text>
-              </View>
-              <TouchableOpacity style={styles.phoneRow}>
-                <Text style={styles.phoneText}>{order.store.phone}</Text>
-              </TouchableOpacity>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Phone size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>Store Contact</Text>
             </View>
-          </BlurView>
+            <TouchableOpacity style={styles.phoneRow}>
+              <Phone size={16} color={colors.primary} />
+              <Text style={styles.phoneText}>{order.store.phone}</Text>
+            </TouchableOpacity>
+          </View>
         )}
+
+        {/* Map Placeholder */}
+        <View style={styles.mapCard}>
+          <View style={styles.mapPlaceholder}>
+            <Truck size={40} color={colors.primary} />
+            <Text style={styles.mapText}>Order is on the way!</Text>
+            <Text style={styles.mapSub}>Estimated arrival: 22:55</Text>
+          </View>
+        </View>
       </ScrollView>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -240,91 +248,194 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.18)",
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
-  title: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  orderId: { color: "#fff", fontSize: 20, fontWeight: "700" },
-  storeName: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  card: {
-    borderRadius: 22,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+  title: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "700",
   },
-  cardInner: { backgroundColor: colors.glass, padding: 18 },
+  orderHeader: {
+    marginBottom: 20,
+  },
+  orderId: {
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  storeName: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  statusCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   statusHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
-  statusDate: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  sectionHeader: {
+  dateBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  sectionTitle: {
-    color: "#fff",
+  statusDate: {
+    color: colors.primary,
+    fontSize: 12,
     fontWeight: "600",
-    fontSize: 14,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontWeight: "700",
+    fontSize: 16,
   },
   itemRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  itemName: { color: colors.textMuted, fontSize: 13, flex: 1 },
+  itemDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    marginRight: 10,
+  },
+  itemName: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    flex: 1,
+  },
   itemRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  itemQty: { color: colors.textMuted, fontSize: 13 },
-  itemPrice: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  itemQty: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  itemPrice: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
+    minWidth: 60,
+    textAlign: "right",
+  },
+  totalPrice: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: "800",
+    minWidth: 60,
+    textAlign: "right",
+  },
   divider: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.15)",
-    marginVertical: 10,
+    borderTopColor: colors.divider,
+    marginVertical: 12,
   },
   infoRow: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   infoLabel: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 12,
     marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   infoValue: {
-    color: "#fff",
-    fontSize: 13,
-    lineHeight: 20,
+    color: colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 22,
   },
   phoneRow: {
-    backgroundColor: "rgba(168,224,99,0.1)",
-    padding: 12,
-    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.primary + "10",
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.accent + "30",
+    borderColor: colors.primary + "20",
   },
   phoneText: {
-    color: colors.accent,
-    fontSize: 14,
+    color: colors.primary,
+    fontSize: 15,
     fontWeight: "600",
-    textAlign: "center",
+  },
+  mapCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 30,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+    height: 200,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+  },
+  mapText: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  mapSub: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 4,
   },
   errorContainer: {
     flex: 1,
@@ -333,12 +444,19 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   errorText: {
-    color: "#fff",
-    fontSize: 16,
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  backBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   backBtnText: {
-    color: colors.accent,
-    fontSize: 14,
+    color: colors.textLight,
+    fontSize: 15,
     fontWeight: "600",
   },
 });

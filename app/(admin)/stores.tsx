@@ -11,7 +11,7 @@ import {
   Modal,
   Switch,
 } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
@@ -56,7 +56,15 @@ export default function AdminStoresScreen() {
 
   const openAdd = () => {
     setEditStore(null);
-    setForm({ name: "", description: "", address: "", latitude: "", longitude: "",logo_url:"", is_active: true });
+    setForm({
+      name: "",
+      description: "",
+      address: "",
+      latitude: "",
+      longitude: "",
+      logo_url: "",
+      is_active: true,
+    });
     setModalVisible(true);
   };
 
@@ -111,7 +119,9 @@ export default function AdminStoresScreen() {
         if (error) throw error;
         Alert.alert("Success", "Store updated");
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           throw new Error("Not authenticated");
         }
@@ -144,7 +154,10 @@ export default function AdminStoresScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            const { error } = await supabase.from("stores").delete().eq("id", id);
+            const { error } = await supabase
+              .from("stores")
+              .delete()
+              .eq("id", id);
             if (error) {
               Alert.alert("Error", "Failed to delete store");
             } else {
@@ -171,16 +184,16 @@ export default function AdminStoresScreen() {
   };
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <View style={styles.header}>
         <Text style={styles.title}>Stores</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color="#fff" />
+          <Plus size={20} color="#000000" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={stores}
@@ -221,9 +234,10 @@ export default function AdminStoresScreen() {
                   {item.address ? (
                     <Text style={styles.meta}>📍 {item.address}</Text>
                   ) : null}
-                  {(item.latitude || item.longitude) ? (
+                  {item.latitude || item.longitude ? (
                     <Text style={styles.meta}>
-                      🌐 {item.latitude?.toFixed(6)}, {item.longitude?.toFixed(6)}
+                      🌐 {item.latitude?.toFixed(6)},{" "}
+                      {item.longitude?.toFixed(6)}
                     </Text>
                   ) : null}
                   {item.description ? (
@@ -238,7 +252,9 @@ export default function AdminStoresScreen() {
                   <View style={styles.actions}>
                     <Switch
                       value={item.is_active}
-                      onValueChange={() => toggleActive(item.id, item.is_active)}
+                      onValueChange={() =>
+                        toggleActive(item.id, item.is_active)
+                      }
                       trackColor={{
                         false: "rgba(255,255,255,0.15)",
                         true: colors.primary,
@@ -280,11 +296,36 @@ export default function AdminStoresScreen() {
               </Text>
 
               {[
-                { label: "Store name *", key: "name", placeholder: "e.g. FreshMart CDO", keyboard: "default" },
-                { label: "Address", key: "address", placeholder: "e.g. Divisoria, CDO", keyboard: "default" },
-                { label: "Latitude", key: "latitude", placeholder: "e.g. 8.4764", keyboard: "numeric" },
-                { label: "Longitude", key: "longitude", placeholder: "e.g. 124.6453", keyboard: "numeric" },
-                { label: "Description", key: "description", placeholder: "Short description", keyboard: "default" },
+                {
+                  label: "Store name *",
+                  key: "name",
+                  placeholder: "e.g. FreshMart CDO",
+                  keyboard: "default",
+                },
+                {
+                  label: "Address",
+                  key: "address",
+                  placeholder: "e.g. Divisoria, CDO",
+                  keyboard: "default",
+                },
+                {
+                  label: "Latitude",
+                  key: "latitude",
+                  placeholder: "e.g. 8.4764",
+                  keyboard: "numeric",
+                },
+                {
+                  label: "Longitude",
+                  key: "longitude",
+                  placeholder: "e.g. 124.6453",
+                  keyboard: "numeric",
+                },
+                {
+                  label: "Description",
+                  key: "description",
+                  placeholder: "Short description",
+                  keyboard: "default",
+                },
               ].map(({ label, key, placeholder, keyboard }) => (
                 <View key={key}>
                   <Text style={styles.label}>{label}</Text>
@@ -301,7 +342,9 @@ export default function AdminStoresScreen() {
               {/* Add this after the Longitude input */}
               <ImagePickerButton
                 currentImage={form.logo_url}
-                onImageSelected={(url) => setForm((f) => ({ ...f, logo_url: url || "" }))}
+                onImageSelected={(url) =>
+                  setForm((f) => ({ ...f, logo_url: url || "" }))
+                }
                 bucket="stores"
                 path="store-logos"
                 label="Store Logo"
@@ -311,7 +354,9 @@ export default function AdminStoresScreen() {
                 <Text style={styles.label}>Store is active</Text>
                 <Switch
                   value={form.is_active}
-                  onValueChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, is_active: v }))
+                  }
                   trackColor={{
                     false: "rgba(255,255,255,0.15)",
                     true: colors.primary,
@@ -332,15 +377,15 @@ export default function AdminStoresScreen() {
                     Cancel
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.saveBtn, saving && { opacity: 0.6 }]} 
+                <TouchableOpacity
+                  style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                   onPress={save}
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color="#000000" size="small" />
                   ) : (
-                    <Text style={{ color: "#fff", fontWeight: "700" }}>
+                    <Text style={{ color: "#000000", fontWeight: "700" }}>
                       {editStore ? "Update" : "Save"}
                     </Text>
                   )}
@@ -350,7 +395,7 @@ export default function AdminStoresScreen() {
           </BlurView>
         </View>
       </Modal>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -362,7 +407,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  title: { color: "#a8f7f6", fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
@@ -400,7 +445,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  storeName: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  storeName: { color: "#000000", fontWeight: "700", fontSize: 15 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -444,7 +489,7 @@ const styles = StyleSheet.create({
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.9)", padding: 24, gap: 2 },
   modalTitle: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 8,
@@ -459,7 +504,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
     padding: 14,
-    color: "#fff",
+    color: "#000000",
     fontSize: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",

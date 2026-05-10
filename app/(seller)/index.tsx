@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
@@ -47,10 +54,13 @@ export default function SellerDashboard() {
         .select("status, total_amount")
         .eq("store_id", storeData.id);
 
-      const activeOrders = orders?.filter((o) => !["delivered", "cancelled"].includes(o.status)).length || 0;
-      const totalSales = orders
-        ?.filter((o) => o.status === "delivered")
-        .reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+      const activeOrders =
+        orders?.filter((o) => !["delivered", "cancelled"].includes(o.status))
+          .length || 0;
+      const totalSales =
+        orders
+          ?.filter((o) => o.status === "delivered")
+          .reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
 
       setStats({
         totalProducts: productCount || 0,
@@ -64,14 +74,14 @@ export default function SellerDashboard() {
 
   if (loading) {
     return (
-      <GreenScreen>
-        <ActivityIndicator color="#fff" style={{ marginTop: 60 }} />
-      </GreenScreen>
+      <AppScreen>
+        <ActivityIndicator color="#000000" style={{ marginTop: 60 }} />
+      </AppScreen>
     );
   }
 
   return (
-    <GreenScreen>
+    <AppScreen>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.greeting}>Hello, {profile?.full_name}</Text>
@@ -80,7 +90,11 @@ export default function SellerDashboard() {
 
         {!store ? (
           <BlurView intensity={30} tint="light" style={styles.noStoreCard}>
-            <Store size={40} color={colors.accent} style={{ marginBottom: 16 }} />
+            <Store
+              size={40}
+              color={colors.accent}
+              style={{ marginBottom: 16 }}
+            />
             <Text style={styles.noStoreTitle}>No Store Found</Text>
             <Text style={styles.noStoreText}>
               You need to set up a store profile before you can start selling.
@@ -103,7 +117,9 @@ export default function SellerDashboard() {
             <View style={styles.statsGrid}>
               <BlurView intensity={30} tint="light" style={styles.statCard}>
                 <TrendingUp size={24} color={colors.accent} />
-                <Text style={styles.statValue}>₱{stats.totalSales.toFixed(2)}</Text>
+                <Text style={styles.statValue}>
+                  ₱{stats.totalSales.toFixed(2)}
+                </Text>
                 <Text style={styles.statLabel}>Total Sales</Text>
               </BlurView>
 
@@ -122,7 +138,7 @@ export default function SellerDashboard() {
           </View>
         )}
       </ScrollView>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
@@ -140,7 +156,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 28,
     fontWeight: "700",
   },
@@ -153,7 +169,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   noStoreTitle: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 8,
@@ -187,7 +203,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   storeName: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 18,
     fontWeight: "700",
   },
@@ -212,7 +228,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statValue: {
-    color: "#fff",
+    color: "#000000",
     fontSize: 24,
     fontWeight: "700",
   },

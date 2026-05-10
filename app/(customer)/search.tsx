@@ -8,17 +8,40 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Keyboard,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { GreenScreen } from "../../src/components/GreenScreen";
+import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
-import { Search, SlidersHorizontal } from "lucide-react-native";
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  Clock,
+  TrendingUp,
+} from "lucide-react-native";
+
+const RECENT_SEARCHES = [
+  "Fresh Blueberry",
+  "Radishes",
+  "Pear",
+  "Red apple",
+  "Grape",
+  "Brown bread",
+];
+const TRENDING = [
+  "Organic Vegetables",
+  "Fresh Fruits",
+  "Dairy Products",
+  "Bakery Items",
+];
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
 
   const {
     data: results,
@@ -30,7 +53,9 @@ export default function SearchScreen() {
       if (!query.trim()) return [];
       const { data, error } = await supabase
         .from("store_products")
-        .select(`*, product:products(*, category:categories(name)), store:stores(name)`)
+        .select(
+          `*, product:products(*, category:categories(name)), store:stores(name)`,
+        )
         .ilike("product.name", `%${query}%`)
         .eq("is_available", true)
         .gt("stock_qty", 0);
@@ -47,77 +72,249 @@ export default function SearchScreen() {
     setRefreshing(false);
   }, [refetch]);
 
+  const handleSearch = (text: string) => {
+    setQuery(text);
+  };
+
+  const clearSearch = () => {
+    setQuery("");
+    Keyboard.dismiss();
+  };
+
+  const removeRecent = (item: string) => {
+    setRecentSearches((prev) => prev.filter((r) => r !== item));
+  };
+
   return (
-    <GreenScreen>
+    <AppScreen>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
         <View style={styles.searchBar}>
-          <Search size={16} color={colors.textMuted} />
+          <Search size={18} color={colors.textMuted} />
           <TextInput
             style={styles.input}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={handleSearch}
             placeholder="Search fresh products..."
             placeholderTextColor={colors.textMuted}
             autoFocus
             autoCapitalize="none"
+            returnKeyType="search"
           />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
+              <X size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.filterBtn}>
-            <SlidersHorizontal size={16} color={colors.textMuted} />
+            <SlidersHorizontal size={18} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {isLoading && query.length > 1 && (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+      {/* Search Results */}
+      {query.length > 1 && (
+        <>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsText}>
+              {isLoading
+                ? "Searching..."
+                : `${results?.length || 0} results found`}
+            </Text>
+          </View>
+
+          {isLoading && (
+            <ActivityIndicator
+              color={colors.primary}
+              style={{ marginTop: 40 }}
+            />
+          )}
+
+          {!isLoading && results?.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <Search size={48} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>No products found</Text>
+              <Text style={styles.emptySub}>Try a different search term</Text>
+            </View>
+          )}
+
+          <FlatList
+            data={results}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            renderItem={({ item }) => <ProductCard item={item} />}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.primary}
+              />
+            }
+          />
+        </>
       )}
 
-      {!isLoading && query.length > 1 && results?.length === 0 && (
-        <View style={styles.emptyContainer}>
-          <Search size={48} color={colors.textMuted} />
-          <Text style={styles.empty}>No products found for "{query}"</Text>
-          <Text style={styles.emptySub}>Try a different search term</Text>
-        </View>
-      )}
-
+      {/* Default State - Recent & Trending */}
       {query.length <= 1 && (
-        <View style={styles.emptyContainer}>
-          <Search size={48} color={colors.textMuted} />
-          <Text style={styles.empty}>Start typing to search</Text>
-          <Text style={styles.emptySub}>Find fresh products near you</Text>
-        </View>
-      )}
+        <FlatList
+          data={[]}
+          renderItem={() => null}
+          ListHeaderComponent={
+            <>
+              {/* Recent Searches */}
+              <View style={styles.sectionHeader}>
+                <Clock size={18} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Recent</Text>
+                <TouchableOpacity onPress={() => setRecentSearches([])}>
+                  <Text style={styles.clearAll}>Clear</Text>
+                </TouchableOpacity>
+              </View>
 
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        renderItem={({ item }) => <ProductCard item={item} />}
-        contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-        }
-      />
-    </GreenScreen>
+              {recentSearches.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.recentItem}
+                  onPress={() => handleSearch(item)}
+                >
+                  <Clock size={16} color={colors.textMuted} />
+                  <Text style={styles.recentText}>{item}</Text>
+                  <TouchableOpacity
+                    onPress={() => removeRecent(item)}
+                    style={styles.recentRemove}
+                  >
+                    <X size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
+
+              {/* Trending */}
+              <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+                <TrendingUp size={18} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Trending</Text>
+              </View>
+
+              <View style={styles.trendingGrid}>
+                {TRENDING.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.trendingChip}
+                    onPress={() => handleSearch(item)}
+                  >
+                    <Text style={styles.trendingText}>{item}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          }
+        />
+      )}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 20, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "700", marginBottom: 12 },
+  header: {
+    marginBottom: 16,
+  },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: "800",
+    marginBottom: 16,
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  input: { flex: 1, color: "#fff", fontSize: 14 },
-  filterBtn: {
+  input: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 15,
+    paddingVertical: 12,
+  },
+  clearBtn: {
     padding: 4,
+  },
+  filterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  resultsHeader: {
+    marginBottom: 12,
+  },
+  resultsText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+  },
+  clearAll: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+    gap: 12,
+  },
+  recentText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 15,
+  },
+  recentRemove: {
+    padding: 4,
+  },
+  trendingGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  trendingChip: {
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary + "20",
+  },
+  trendingText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "600",
   },
   emptyContainer: {
     alignItems: "center",
@@ -125,15 +322,13 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     gap: 12,
   },
-  empty: {
-    color: colors.textMuted,
-    textAlign: "center",
-    fontSize: 16,
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "600",
   },
   emptySub: {
-    color: colors.textMuted,
-    textAlign: "center",
-    fontSize: 13,
-    opacity: 0.7,
+    color: colors.textSecondary,
+    fontSize: 14,
   },
 });

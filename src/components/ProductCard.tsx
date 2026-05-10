@@ -1,81 +1,96 @@
-import { View, Text, TouchableOpacity, Image, StyleSheet, Animated } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Animated,
+} from "react-native";
 import { useCartStore } from "../stores/cartStore";
 import { colors } from "../constants/colors";
 import { router } from "expo-router";
-import { Plus, Minus, ShoppingCart } from "lucide-react-native";
+import { Plus, ShoppingCart, Heart } from "lucide-react-native";
 import { useState, useRef } from "react";
 
 export function ProductCard({ item }: { item: any }) {
   const addItem = useCartStore((s) => s.addItem);
   const [adding, setAdding] = useState(false);
+  const [liked, setLiked] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handleAdd = async () => {
     setAdding(true);
-
-    // Button press animation
     Animated.sequence([
       Animated.timing(scaleAnim, {
-        toValue: 0.9,
+        toValue: 0.92,
         duration: 100,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 100,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start();
 
     await addItem(item.id, 1);
-
-    setTimeout(() => setAdding(false), 600);
+    setTimeout(() => setAdding(false), 800);
   };
+
+  const product = item.product || {};
+  const price = item.price || 0;
+  const stockQty = item.stock_qty || 0;
 
   return (
     <TouchableOpacity
       style={styles.card}
       onPress={() => router.push(`/(customer)/product/${item.id}`)}
-      activeOpacity={0.85}
+      activeOpacity={0.9}
     >
-      {/* Image */}
+      {/* Image Container */}
       <View style={styles.imageContainer}>
-        {item.product?.image_url ? (
-          <Image source={{ uri: item.product.image_url }} style={styles.image} />
+        {product.image_url ? (
+          <Image source={{ uri: product.image_url }} style={styles.image} />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <Text style={{ fontSize: 36 }}>🛒</Text>
+            <ShoppingCart size={32} color={colors.textMuted} />
           </View>
         )}
 
-        {/* Category Badge */}
-        {item.product?.category?.name && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{item.product.category.name}</Text>
-          </View>
-        )}
+        {/* Discount Badge */}
+        <View style={styles.discountBadge}>
+          <Text style={styles.discountText}>-15%</Text>
+        </View>
+
+        {/* Like Button */}
+        <TouchableOpacity
+          style={styles.likeBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            setLiked(!liked);
+          }}
+        >
+          <Heart
+            size={18}
+            color={liked ? colors.error : colors.textMuted}
+            fill={liked ? colors.error : "transparent"}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
       <View style={styles.content}>
         <Text style={styles.name} numberOfLines={1}>
-          {item.product?.name || "Unknown Product"}
+          {product.name || "Unknown Product"}
         </Text>
-        <Text style={styles.unit}>{item.product?.unit || "piece"}</Text>
-
-        {/* Store name if available */}
-        {item.store?.name && (
-          <Text style={styles.storeName} numberOfLines={1}>
-            {item.store.name}
-          </Text>
-        )}
+        <Text style={styles.unit}>{product.unit || "piece"}</Text>
 
         <View style={styles.footer}>
           <View>
-            <Text style={styles.price}>₱{item.price?.toFixed(2)}</Text>
-            {item.stock_qty <= 5 && item.stock_qty > 0 && (
-              <Text style={styles.lowStock}>Only {item.stock_qty} left</Text>
-            )}
+            <Text style={styles.price}>${price.toFixed(2)}</Text>
+            <Text style={styles.originalPrice}>
+              ${(price * 1.15).toFixed(2)}
+            </Text>
           </View>
 
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -85,16 +100,20 @@ export function ProductCard({ item }: { item: any }) {
                 e.stopPropagation();
                 handleAdd();
               }}
-              disabled={adding}
+              disabled={adding || stockQty <= 0}
             >
               {adding ? (
-                <ShoppingCart size={16} color="#fff" />
+                <ShoppingCart size={16} color={colors.textLight} />
               ) : (
-                <Plus size={18} color="#fff" />
+                <Plus size={18} color={colors.textLight} />
               )}
             </TouchableOpacity>
           </Animated.View>
         </View>
+
+        {stockQty <= 5 && stockQty > 0 && (
+          <Text style={styles.lowStock}>Only {stockQty} left</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -104,17 +123,20 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     margin: 6,
-    borderRadius: 20,
-    backgroundColor: colors.glass,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   imageContainer: {
     position: "relative",
     width: "100%",
-    height: 120,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    height: 140,
+    backgroundColor: colors.surfaceVariant,
   },
   image: {
     width: "100%",
@@ -127,59 +149,69 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  categoryBadge: {
+  discountBadge: {
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 10,
+    backgroundColor: colors.error,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  categoryText: {
-    color: "#fff",
+  discountText: {
+    color: "#000000",
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
+  },
+  likeBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   content: {
     padding: 12,
   },
   name: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   unit: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
-    marginBottom: 2,
-  },
-  storeName: {
-    fontSize: 11,
-    color: colors.accent,
     marginBottom: 8,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 4,
+    alignItems: "center",
   },
   price: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    color: colors.accent,
+    color: colors.primary,
   },
-  lowStock: {
-    fontSize: 10,
-    color: "#ffa726",
-    marginTop: 2,
+  originalPrice: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textDecorationLine: "line-through",
   },
   addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -190,6 +222,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   addBtnActive: {
-    backgroundColor: "#4caf50",
+    backgroundColor: colors.primaryDark,
+  },
+  lowStock: {
+    fontSize: 11,
+    color: colors.warning,
+    marginTop: 4,
+    fontWeight: "500",
   },
 });
