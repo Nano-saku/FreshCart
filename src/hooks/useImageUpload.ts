@@ -6,14 +6,19 @@ import { Alert } from "react-native";
 export function useImageUpload(bucket: string = "images") {
   const [uploading, setUploading] = useState(false);
 
-  const pickImage = async (source: "camera" | "gallery"): Promise<string | null> => {
+  const pickImage = async (
+    source: "camera" | "gallery",
+  ): Promise<string | null> => {
     const permissionResult =
       source === "camera"
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      Alert.alert("Permission required", `Please allow ${source} access in settings.`);
+      Alert.alert(
+        "Permission required",
+        `Please allow ${source} access in settings.`,
+      );
       return null;
     }
 
@@ -39,7 +44,7 @@ export function useImageUpload(bucket: string = "images") {
 
   const uploadToSupabase = async (
     uri: string,
-    path?: string
+    path?: string,
   ): Promise<string | null> => {
     setUploading(true);
 
@@ -75,7 +80,10 @@ export function useImageUpload(bucket: string = "images") {
       return publicUrl;
     } catch (error: any) {
       console.error("Upload error:", error);
-      Alert.alert("Upload failed", error.message || "Could not upload image. Please try again.");
+      Alert.alert(
+        "Upload failed",
+        error.message || "Could not upload image. Please try again.",
+      );
       return null;
     } finally {
       setUploading(false);
@@ -84,7 +92,7 @@ export function useImageUpload(bucket: string = "images") {
 
   const uploadImage = async (
     source: "camera" | "gallery",
-    path?: string
+    path?: string,
   ): Promise<string | null> => {
     const uri = await pickImage(source);
     if (!uri) return null;
