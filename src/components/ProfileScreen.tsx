@@ -11,7 +11,7 @@ import {
 import { useState, useEffect } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { AppScreen } from "../../src/components/AppScreen";
-import { colors } from "../../src/constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   LogOut,
   User,
@@ -21,9 +21,12 @@ import {
   Bell,
   MapPin,
   CreditCard,
+  Moon,
+  Sun,
 } from "lucide-react-native";
 
 export default function ProfileScreen() {
+  const { theme, isDark, toggleTheme, themeMode } = useTheme();
   const {
     user,
     profile,
@@ -83,32 +86,33 @@ export default function ProfileScreen() {
     switch (profile?.role) {
       case "admin":
         return {
-          backgroundColor: colors.error + "15",
-          borderColor: colors.error + "40",
-          color: colors.error,
+          backgroundColor: theme.error + "15",
+          borderColor: theme.error + "40",
+          color: theme.error,
         };
       case "seller":
         return {
-          backgroundColor: colors.warning + "15",
-          borderColor: colors.warning + "40",
-          color: colors.warning,
+          backgroundColor: theme.warning + "15",
+          borderColor: theme.warning + "40",
+          color: theme.warning,
         };
       default:
         return {
-          backgroundColor: colors.primary + "15",
-          borderColor: colors.primary + "40",
-          color: colors.primary,
+          backgroundColor: theme.primary + "15",
+          borderColor: theme.primary + "40",
+          color: theme.primary,
         };
     }
   };
 
   const roleStyle = getRoleBadgeStyle();
+  const styles = createStyles(theme);
 
   const menuItems = [
-    { icon: MapPin, label: "Delivery Addresses", color: colors.textPrimary },
-    { icon: CreditCard, label: "Payment Methods", color: colors.textPrimary },
-    { icon: Bell, label: "Notifications", color: colors.textPrimary },
-    { icon: Settings, label: "Settings", color: colors.textPrimary },
+    { icon: MapPin, label: "Delivery Addresses", color: theme.textPrimary },
+    { icon: CreditCard, label: "Payment Methods", color: theme.textPrimary },
+    { icon: Bell, label: "Notifications", color: theme.textPrimary },
+    { icon: Settings, label: "Settings", color: theme.textPrimary },
   ];
 
   return (
@@ -120,7 +124,7 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <User size={40} color={colors.primary} />
+            <User size={40} color={theme.primary} />
           </View>
           <Text style={styles.name}>{profile?.full_name || "User"}</Text>
           <Text style={styles.email}>{user?.email}</Text>
@@ -150,13 +154,13 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.menuIcon,
-                  { backgroundColor: colors.primary + "10" },
+                  { backgroundColor: theme.primary + "10" },
                 ]}
               >
-                <item.icon size={20} color={colors.primary} />
+                <item.icon size={20} color={theme.primary} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
-              <ChevronRight size={20} color={colors.textMuted} />
+              <ChevronRight size={20} color={theme.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
@@ -168,10 +172,10 @@ export default function ProfileScreen() {
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: colors.primary + "10" },
+                { backgroundColor: theme.primary + "10" },
               ]}
             >
-              <Shield size={20} color={colors.primary} />
+              <Shield size={20} color={theme.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Biometric Login</Text>
@@ -182,8 +186,43 @@ export default function ProfileScreen() {
             <Switch
               value={biometricToggle}
               onValueChange={handleBiometricToggle}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={biometricToggle ? colors.surface : colors.textMuted}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={biometricToggle ? theme.surface : theme.textMuted}
+            />
+          </View>
+        </View>
+
+        {/* Appearance Section */}
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <View style={styles.card}>
+          <View style={styles.cardInner}>
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: theme.primary + "10" },
+              ]}
+            >
+              {isDark ? (
+                <Moon size={20} color={theme.primary} />
+              ) : (
+                <Sun size={20} color={theme.primary} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Dark Mode</Text>
+              <Text style={styles.cardSubtitle}>
+                {themeMode === "auto"
+                  ? "Following system settings"
+                  : isDark
+                    ? "Dark theme active"
+                    : "Light theme active"}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={isDark ? theme.surface : theme.textMuted}
             />
           </View>
         </View>
@@ -200,15 +239,15 @@ export default function ProfileScreen() {
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: colors.error + "10" },
+                { backgroundColor: theme.error + "10" },
               ]}
             >
-              <LogOut size={20} color={colors.error} />
+              <LogOut size={20} color={theme.error} />
             </View>
-            <Text style={[styles.cardTitle, { color: colors.error, flex: 1 }]}>
+            <Text style={[styles.cardTitle, { color: theme.error, flex: 1 }]}>
               {isLoggingOut ? "Logging out..." : "Log Out"}
             </Text>
-            {!isLoggingOut && <ChevronRight size={20} color={colors.error} />}
+            {!isLoggingOut && <ChevronRight size={20} color={theme.error} />}
           </View>
         </TouchableOpacity>
 
@@ -230,10 +269,10 @@ export default function ProfileScreen() {
                 <View
                   style={[
                     styles.modalIcon,
-                    { backgroundColor: colors.warning + "15" },
+                    { backgroundColor: theme.warning + "15" },
                   ]}
                 >
-                  <LogOut size={28} color={colors.warning} />
+                  <LogOut size={28} color={theme.warning} />
                 </View>
                 <Text style={styles.modalTitle}>Choose Logout Option</Text>
                 <Text style={styles.modalSubtitle}>
@@ -247,7 +286,7 @@ export default function ProfileScreen() {
                   onPress={handleSoftLogout}
                   style={[
                     styles.actionBtn,
-                    { backgroundColor: colors.primary },
+                    { backgroundColor: theme.primary },
                   ]}
                   activeOpacity={0.8}
                 >
@@ -263,7 +302,7 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 onPress={handleFullLogout}
-                style={[styles.actionBtn, { backgroundColor: colors.error }]}
+                style={[styles.actionBtn, { backgroundColor: theme.error }]}
                 activeOpacity={0.8}
               >
                 <LogOut size={22} color="#fff" />
@@ -277,7 +316,7 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 onPress={() => setShowLogoutModal(false)}
-                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                style={[styles.cancelBtn, { borderColor: theme.border }]}
                 activeOpacity={0.8}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -290,7 +329,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
@@ -303,21 +342,21 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primary + "15",
+    backgroundColor: theme.primary + "15",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
     borderWidth: 3,
-    borderColor: colors.primary + "30",
+    borderColor: theme.primary + "30",
   },
   name: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 4,
   },
   email: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 16,
     marginBottom: 12,
   },
@@ -341,7 +380,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     marginBottom: 1,
   },
   menuIcon: {
@@ -354,12 +393,12 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     flex: 1,
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "500",
   },
   sectionTitle: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -370,8 +409,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 16,
-    backgroundColor: colors.surface,
-    shadowColor: colors.shadowColor,
+    backgroundColor: theme.surface,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -381,8 +420,8 @@ const styles = StyleSheet.create({
   },
   logoutCard: {
     borderRadius: 16,
-    backgroundColor: colors.surface,
-    shadowColor: colors.shadowColor,
+    backgroundColor: theme.surface,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -390,7 +429,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.error + "20",
+    borderColor: theme.error + "20",
   },
   cardInner: {
     padding: 16,
@@ -406,17 +445,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "600",
   },
   cardSubtitle: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     marginTop: 2,
   },
   version: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
     textAlign: "center",
     marginTop: 32,
@@ -430,10 +469,10 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     borderRadius: 24,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     width: "100%",
     maxWidth: 360,
-    shadowColor: colors.shadowColorStrong,
+    shadowColor: theme.shadowColorStrong,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 1,
     shadowRadius: 24,
@@ -456,14 +495,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 8,
     textAlign: "center",
   },
   modalSubtitle: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
@@ -487,14 +526,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cancelBtn: {
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: theme.surfaceVariant,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
   },
   cancelText: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 16,
     fontWeight: "600",
   },

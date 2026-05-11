@@ -16,7 +16,7 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { StoreSelector } from "../../src/components/StoreSelector";
 import { supabase } from "../../src/lib/supabase";
-import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import { router } from "expo-router";
 import { Search, Bell, ShoppingBag, ChevronRight } from "lucide-react-native";
 
@@ -38,6 +38,7 @@ const CATEGORIES = [
 ];
 
 export default function HomeScreen() {
+  const { theme } = useTheme();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -80,32 +81,37 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  const renderCategoryItem = ({ item }: { item: (typeof CATEGORIES)[0] }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryItem,
-        selectedCategory === item.name && styles.categoryItemActive,
-      ]}
-      onPress={() =>
-        setSelectedCategory(selectedCategory === item.name ? null : item.name)
-      }
-      activeOpacity={0.8}
-    >
-      <View
-        style={[styles.categoryIcon, { backgroundColor: item.color + "15" }]}
-      >
-        <Text style={styles.categoryEmoji}>{item.icon}</Text>
-      </View>
-      <Text
+  const renderCategoryItem = ({ item }: { item: (typeof CATEGORIES)[0] }) => {
+    const styles = createStyles(theme);
+    return (
+      <TouchableOpacity
         style={[
-          styles.categoryName,
-          selectedCategory === item.name && styles.categoryNameActive,
+          styles.categoryItem,
+          selectedCategory === item.name && styles.categoryItemActive,
         ]}
+        onPress={() =>
+          setSelectedCategory(selectedCategory === item.name ? null : item.name)
+        }
+        activeOpacity={0.8}
       >
-        {item.name}
-      </Text>
-    </TouchableOpacity>
-  );
+        <View
+          style={[styles.categoryIcon, { backgroundColor: item.color + "15" }]}
+        >
+          <Text style={styles.categoryEmoji}>{item.icon}</Text>
+        </View>
+        <Text
+          style={[
+            styles.categoryName,
+            selectedCategory === item.name && styles.categoryNameActive,
+          ]}
+        >
+          {item.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const styles = createStyles(theme);
 
   return (
     <AppScreen noPadding>
@@ -121,13 +127,13 @@ export default function HomeScreen() {
               style={styles.iconBtn}
               onPress={() => router.push("/(customer)/search")}
             >
-              <Search size={22} color={colors.textPrimary} />
+              <Search size={22} color={theme.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => router.push("/(customer)/orders")}
             >
-              <Bell size={22} color={colors.textPrimary} />
+              <Bell size={22} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -138,7 +144,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(customer)/search")}
           activeOpacity={0.8}
         >
-          <Search size={18} color={colors.textMuted} />
+          <Search size={18} color={theme.textMuted} />
           <Text style={styles.searchPlaceholder}>Search fresh products...</Text>
         </TouchableOpacity>
       </View>
@@ -149,7 +155,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={theme.primary}
           />
         }
       >
@@ -163,7 +169,7 @@ export default function HomeScreen() {
               </Text>
               <TouchableOpacity style={styles.bannerBtn}>
                 <Text style={styles.bannerBtnText}>Shop Now</Text>
-                <ChevronRight size={16} color={colors.primary} />
+                <ChevronRight size={16} color={theme.primary} />
               </TouchableOpacity>
             </View>
             <View style={styles.bannerImage}>
@@ -196,7 +202,7 @@ export default function HomeScreen() {
 
         {/* Products Section */}
         <View style={styles.sectionHeader}>
-          <ShoppingBag size={18} color={colors.primary} />
+          <ShoppingBag size={18} color={theme.primary} />
           <Text style={styles.sectionTitle}>
             {selectedStore ? "Store Products" : "Featured Products"}
           </Text>
@@ -206,7 +212,7 @@ export default function HomeScreen() {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
         ) : error ? (
           <Text style={styles.errorText}>Failed to load products</Text>
         ) : (
@@ -232,12 +238,12 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
   },
   headerTop: {
     flexDirection: "row",
@@ -246,11 +252,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   greeting: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 28,
     fontWeight: "800",
   },
@@ -262,25 +268,25 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   searchPlaceholder: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 15,
     flex: 1,
   },
@@ -289,19 +295,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   banner: {
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     borderRadius: 20,
     padding: 20,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.primary + "20",
+    borderColor: theme.primary + "20",
   },
   bannerContent: {
     flex: 1,
   },
   bannerTag: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -309,7 +315,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   bannerTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
@@ -319,19 +325,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     alignSelf: "flex-start",
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 4,
     elevation: 2,
   },
   bannerBtnText: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -350,13 +356,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     flex: 1,
   },
   seeAll: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -370,14 +376,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
     minWidth: 72,
   },
   categoryItemActive: {
-    backgroundColor: colors.primary + "10",
-    borderColor: colors.primary,
+    backgroundColor: theme.primary + "10",
+    borderColor: theme.primary,
   },
   categoryIcon: {
     width: 48,
@@ -391,16 +397,16 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   categoryName: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: "500",
   },
   categoryNameActive: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "700",
   },
   errorText: {
-    color: colors.error,
+    color: theme.error,
     textAlign: "center",
     marginTop: 40,
     fontSize: 14,
@@ -411,12 +417,12 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   emptyText: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "600",
   },
   emptySub: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginTop: 4,
   },
