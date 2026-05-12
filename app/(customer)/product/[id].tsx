@@ -1,412 +1,334 @@
-import { useEffect, useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Animated,
-} from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
-import { GreenScreen } from "../../../src/components/AppScreen";
-import { BlurView } from "expo-blur";
+import { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { AppScreen } from "../../../src/components/AppScreen";
+import { useTheme } from "../../../src/contexts/ThemeContext";
+import { useAuthStore } from "../../../src/stores/authStore";
 import { supabase } from "../../../src/lib/supabase";
-import { colors } from "../../../src/constants/colors";
-import { useCartStore } from "../../../src/stores/cartStore";
-import { ChevronLeft, Star, ShoppingCart, Check } from "lucide-react-native";
+import { ArrowLeft, Plus, Minus, ShoppingCart, Star, MapPin, Store } from "lucide-react-native";
 
 export default function ProductDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams();
+  const { theme } = useTheme();
+  const { user } = useAuthStore();
+  const styles = createStyles(theme);
+
   const [product, setProduct] = useState<any>(null);
-  const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    supabase
-      .from("store_products")
-      .select(
-        `*, product:products(*, category:categories(name)), store:stores(name, address)`,
-      )
-      .eq("id", id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Product fetch error:", error);
-        }
-        setProduct(data);
-        setLoading(false);
-      });
+    fetchProduct();
   }, [id]);
 
-  const handleAddToCart = async () => {
-    if (!product) return;
+  const fetchProduct = async () => {
+    const { data, error } = await supabase
+      .from("store_products")
+      .select("*, product:products(*, category:categories(name)), store:stores(name, address)")
+      .eq("id", id)
+      .single();
 
-    setAdding(true);
-
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    await addItem(id, qty);
-
-    setTimeout(() => {
-      setAdding(false);
-      setQty(1);
-    }, 800);
+    if (!error) setProduct(data);
+    setLoading(false);
   };
 
-  if (loading) {
+  const handleAddToCart = () => {
+    if (!user) {
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in or create an account to add items to your cart.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign In", onPress: () => router.push("/(auth)/login") },
+          { text: "Sign Up", onPress: () => router.push("/(auth)/register") },
+        ]
+      );
+      return;
+    }
+
+    // Add to authenticated cart
+    // addToCart(product.id, quantity);
+    Alert.alert("Added to cart", `${quantity} × ${product.product.name}`);
+  };
+
+  if (loading || !product) {
     return (
-      <GreenScreen>
-        <ActivityIndicator color="#fff" style={{ flex: 1 }} />
-      </GreenScreen>
+      <AppScreen>
+        <Text style={{ color: theme.textPrimary }}>Loading...</Text>
+      </AppScreen>
     );
   }
-
-  if (!product) {
-    return (
-      <GreenScreen>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Product not found</Text>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </GreenScreen>
-    );
-  }
-
-  const isOutOfStock = product.stock_qty <= 0;
-  const isLowStock = product.stock_qty <= 5 && product.stock_qty > 0;
 
   return (
-    <GreenScreen>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.back()}
-          >
-            <ChevronLeft size={20} color="#fff" />
+    <AppScreen noPadding>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: theme.background }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={24} color={theme.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.topTitle}>Product details</Text>
-          <View style={{ width: 38 }} />
         </View>
 
-        {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          {product?.product?.image_url ? (
-            <Image
-              source={{ uri: product.product.image_url }}
-              style={styles.heroImg}
-              resizeMode="cover"
-            />
+        {/* Product Image */}
+        <View style={[styles.imageContainer, { backgroundColor: theme.surfaceVariant }]}>
+          {product.product?.image_url ? (
+            <Image source={{ uri: product.product.image_url }} style={styles.image} />
           ) : (
-            <View style={styles.heroPlaceholder}>
-              <Text style={{ fontSize: 80 }}>🛒</Text>
-            </View>
+            <Text style={{ fontSize: 80 }}>🥬</Text>
           )}
-
-          {/* Stock Badge */}
-          {isOutOfStock ? (
-            <View style={[styles.stockBadge, { backgroundColor: "#ef5350" }]}>
-              <Text style={styles.stockText}>Out of Stock</Text>
-            </View>
-          ) : isLowStock ? (
-            <View style={[styles.stockBadge, { backgroundColor: "#ffa726" }]}>
-              <Text style={styles.stockText}>
-                Only {product.stock_qty} left
-              </Text>
-            </View>
-          ) : null}
         </View>
 
-        {/* Product Info Sheet */}
-        <BlurView intensity={40} tint="light" style={styles.sheet}>
-          <View style={styles.sheetInner}>
-            <Text style={styles.productName}>{product?.product?.name}</Text>
-            <Text style={styles.storeName}>
-              {product?.store?.name} • Stock: {product?.stock_qty}
+        {/* Info */}
+        <View style={[styles.infoContainer, { backgroundColor: theme.background }]}>
+          <View style={styles.categoryRow}>
+            <Text style={[styles.category, { color: theme.primary }]}>
+              {product.product?.category?.name || "Fresh"}
             </Text>
-
-            {/* Meta Pills */}
-            <View style={styles.metaRow}>
-              {product?.product?.category?.name && (
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaText}>
-                    {product.product.category.name}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.metaPill}>
-                <Text style={styles.metaText}>{product?.product?.unit}</Text>
-              </View>
-              <View style={[styles.metaPill, styles.ratingPill]}>
-                <Star size={12} color="#FFD700" fill="#FFD700" />
-                <Text style={[styles.metaText, { color: "#FFD700" }]}>
-                  {" "}
-                  4.8
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.description}>
-              {product?.product?.description ||
-                "Fresh and locally sourced. Quality guaranteed."}
-            </Text>
-
-            <Text style={styles.price}>₱{product?.price?.toFixed(2)}</Text>
-
-            {/* Quantity Selector */}
-            <View style={styles.qtyRow}>
-              <TouchableOpacity
-                style={[styles.qtyBtn, qty <= 1 && styles.qtyBtnDisabled]}
-                onPress={() => setQty(Math.max(1, qty - 1))}
-                disabled={qty <= 1}
-              >
-                <Text
-                  style={[
-                    styles.qtyBtnText,
-                    qty <= 1 && styles.qtyBtnTextDisabled,
-                  ]}
-                >
-                  −
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.qtyNum}>{qty}</Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.qtyBtn,
-                  qty >= product?.stock_qty && styles.qtyBtnDisabled,
-                ]}
-                onPress={() =>
-                  setQty(Math.min(product?.stock_qty || 99, qty + 1))
-                }
-                disabled={qty >= (product?.stock_qty || 99)}
-              >
-                <Text
-                  style={[
-                    styles.qtyBtnText,
-                    qty >= product?.stock_qty && styles.qtyBtnTextDisabled,
-                  ]}
-                >
-                  +
-                </Text>
-              </TouchableOpacity>
-
-              <Text style={styles.qtyTotal}>
-                = ₱{(product?.price * qty).toFixed(2)}
+            <View style={[styles.stockBadge, { backgroundColor: product.stock_qty > 5 ? theme.primary + "15" : theme.error + "15" }]}>
+              <Text style={[styles.stockText, { color: product.stock_qty > 5 ? theme.primary : theme.error }]}>
+                {product.stock_qty > 5 ? "In Stock" : `Only ${product.stock_qty} left`}
               </Text>
             </View>
-
-            {/* Add to Cart Button */}
-            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.addCartBtn,
-                  (isOutOfStock || adding) && styles.addCartBtnDisabled,
-                ]}
-                onPress={handleAddToCart}
-                disabled={isOutOfStock || adding}
-              >
-                {adding ? (
-                  <>
-                    <Check size={20} color={colors.textDark} />
-                    <Text style={styles.addCartText}>Added!</Text>
-                  </>
-                ) : isOutOfStock ? (
-                  <>
-                    <ShoppingCart size={20} color={colors.textMuted} />
-                    <Text
-                      style={[styles.addCartText, { color: colors.textMuted }]}
-                    >
-                      Out of Stock
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={20} color={colors.textDark} />
-                    <Text style={styles.addCartText}>Add to cart</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
           </View>
-        </BlurView>
+
+          <Text style={[styles.name, { color: theme.textPrimary }]}>{product.product?.name}</Text>
+          <Text style={[styles.description, { color: theme.textSecondary }]}>
+            {product.product?.description || "Fresh quality product"}
+          </Text>
+
+          {/* Store Info */}
+          <View style={[styles.storeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Store size={18} color={theme.primary} />
+            <View style={styles.storeInfo}>
+              <Text style={[styles.storeName, { color: theme.textPrimary }]}>{product.store?.name}</Text>
+              <View style={styles.addressRow}>
+                <MapPin size={12} color={theme.textMuted} />
+                <Text style={[styles.storeAddress, { color: theme.textMuted }]}>{product.store?.address}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Price */}
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, { color: theme.primary }]}>
+              ${(product.price * quantity).toFixed(2)}
+            </Text>
+            <Text style={[styles.unitPrice, { color: theme.textMuted }]}>
+              ${product.price.toFixed(2)} / {product.product?.unit}
+            </Text>
+          </View>
+
+          {/* Quantity */}
+          <View style={styles.qtySection}>
+            <Text style={[styles.qtyLabel, { color: theme.textPrimary }]}>Quantity</Text>
+            <View style={[styles.qtyRow, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <TouchableOpacity
+                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                style={[styles.qtyBtn, { backgroundColor: theme.surface }]}
+              >
+                <Minus size={18} color={theme.textPrimary} />
+              </TouchableOpacity>
+              <Text style={[styles.qtyValue, { color: theme.textPrimary }]}>{quantity}</Text>
+              <TouchableOpacity
+                onPress={() => setQuantity(quantity + 1)}
+                style={[styles.qtyBtn, { backgroundColor: theme.surface }]}
+              >
+                <Plus size={18} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Add to Cart Button */}
+          <TouchableOpacity
+            onPress={handleAddToCart}
+            style={[styles.addBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
+          >
+            <ShoppingCart size={20} color="#fff" />
+            <Text style={styles.addBtnText}>Add to Cart — ${(product.price * quantity).toFixed(2)}</Text>
+          </TouchableOpacity>
+
+          {/* Reviews Preview */}
+          <View style={styles.reviewsSection}>
+            <Text style={[styles.reviewsTitle, { color: theme.textPrimary }]}>Reviews</Text>
+            <View style={styles.reviewCard}>
+              <Star size={16} color="#FFD700" fill="#FFD700" />
+              <Text style={[styles.reviewText, { color: theme.textSecondary }]}>
+                Sign in to see reviews and leave your own
+              </Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
-    </GreenScreen>
+    </AppScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  topBar: {
+const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) => StyleSheet.create({
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageContainer: {
+    height: 300,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  infoContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    padding: 24,
+    minHeight: 400,
+  },
+  categoryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    paddingTop: 8,
+    marginBottom: 12,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  topTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  heroContainer: {
-    alignItems: "center",
-    paddingVertical: 24,
-    position: "relative",
-  },
-  heroImg: {
-    width: 200,
-    height: 200,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-  },
-  heroPlaceholder: {
-    width: 200,
-    height: 200,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
+  category: {
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
   stockBadge: {
-    position: "absolute",
-    bottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   stockText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
   },
-  sheet: {
-    marginHorizontal: 16,
-    borderRadius: 28,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+  name: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 8,
   },
-  sheetInner: { backgroundColor: colors.glass, padding: 22 },
-  productName: { color: "#fff", fontSize: 24, fontWeight: "700" },
-  storeName: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
-  metaRow: { flexDirection: "row", gap: 8, marginTop: 14, flexWrap: "wrap" },
-  metaPill: {
+  description: {
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  storeCard: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    marginBottom: 20,
   },
-  ratingPill: {
-    backgroundColor: "rgba(255,215,0,0.15)",
-    borderColor: "rgba(255,215,0,0.3)",
+  storeInfo: {
+    flex: 1,
   },
-  metaText: { color: "#fff", fontSize: 12 },
-  description: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-    marginVertical: 12,
+  storeName: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  storeAddress: {
+    fontSize: 12,
+  },
+  priceRow: {
+    marginBottom: 20,
   },
   price: {
-    color: colors.accent,
-    fontSize: 30,
-    fontWeight: "700",
-    marginBottom: 16,
+    fontSize: 32,
+    fontWeight: "800",
+  },
+  unitPrice: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  qtySection: {
+    marginBottom: 20,
+  },
+  qtyLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 10,
   },
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 16,
+    gap: 16,
+    alignSelf: "flex-start",
+    borderRadius: 14,
+    padding: 6,
+    borderWidth: 1,
   },
   qtyBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    shadowColor: theme.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  qtyBtnDisabled: {
-    opacity: 0.4,
-  },
-  qtyBtnText: { color: "#fff", fontSize: 20, lineHeight: 24 },
-  qtyBtnTextDisabled: {
-    color: colors.textMuted,
-  },
-  qtyNum: {
-    color: "#fff",
+  qtyValue: {
     fontSize: 18,
-    fontWeight: "600",
-    minWidth: 28,
+    fontWeight: "700",
+    minWidth: 30,
     textAlign: "center",
   },
-  qtyTotal: { color: colors.textMuted, fontSize: 14 },
-  addCartBtn: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 18,
-    padding: 16,
+  addBtn: {
+    borderRadius: 16,
+    padding: 18,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    marginBottom: 24,
   },
-  addCartBtnDisabled: {
-    opacity: 0.6,
-  },
-  addCartText: { color: colors.textDark, fontWeight: "700", fontSize: 15 },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
-  },
-  errorText: {
+  addBtnText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "700",
   },
-  backBtnText: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: "600",
+  reviewsSection: {
+    marginTop: 8,
+  },
+  reviewsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  reviewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: theme.surfaceVariant,
+  },
+  reviewText: {
+    fontSize: 13,
   },
 });

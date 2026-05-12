@@ -13,6 +13,7 @@ import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useAuthStore } from "../../src/stores/authStore";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 const NEXT_STATUS: Record<string, string> = {
   pending: "confirmed",
@@ -25,6 +26,8 @@ export default function AdminOrdersScreen() {
   const { profile } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const fetchOrders = async () => {
     if (!profile?.id) return;
@@ -67,12 +70,12 @@ export default function AdminOrdersScreen() {
   return (
     <AppScreen>
       <View style={{ padding: 20, paddingBottom: 8 }}>
-        <Text style={{ color: "#000000", fontSize: 24, fontWeight: "700" }}>
+        <Text style={{ color: theme.textPrimary, fontSize: 24, fontWeight: "700" }}>
           Manage orders
         </Text>
       </View>
       {loading ? (
-        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={orders}
@@ -134,23 +137,23 @@ export default function AdminOrdersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   card: {
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.border,
   },
-  cardInner: { backgroundColor: colors.glass, padding: 16, gap: 6 },
+  cardInner: { backgroundColor: theme.surface, padding: 16, gap: 6 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderId: { color: "#000000", fontWeight: "700", fontSize: 14 },
-  amount: { color: colors.accent, fontWeight: "700", fontSize: 14 },
-  customer: { color: "#000000", fontSize: 13 },
-  meta: { color: colors.textMuted, fontSize: 12 },
+  orderId: { color: theme.textPrimary, fontWeight: "700", fontSize: 14 },
+  amount: { color: theme.accent, fontWeight: "700", fontSize: 14 },
+  customer: { color: theme.textPrimary, fontSize: 13 },
+  meta: { color: theme.textMuted, fontSize: 12 },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -160,7 +163,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(168,224,99,0.3)",
   },
   statusText: {
-    color: colors.accent,
+    color: theme.accent,
     fontSize: 11,
     fontWeight: "600",
     textTransform: "capitalize",
@@ -169,10 +172,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   nextBtnText: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",

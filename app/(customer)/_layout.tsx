@@ -9,9 +9,12 @@ import {
 } from "lucide-react-native";
 import { colors } from "../../src/constants/colors";
 import { useCartStore } from "../../src/stores/cartStore";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function CustomerLayout() {
   const items = useCartStore((s) => s.items);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   return (
     <Tabs
@@ -111,7 +114,7 @@ export default function CustomerLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   badge: {
     position: "absolute",
     top: -8,
@@ -127,7 +130,7 @@ const styles = StyleSheet.create({
     borderColor: colors.surface,
   },
   badgeText: {
-    color: "#000000",
+    color: theme.textInverse,
     fontSize: 10,
     fontWeight: "700",
   },

@@ -13,6 +13,7 @@ import {
 import { router } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   ShieldCheck,
   ArrowRight,
@@ -37,6 +38,8 @@ export default function RegisterScreen() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
+  const { theme } = useTheme();
+    const styles = createStyles(theme);
 
   const handleRegister = async () => {
     if (!fullName || !email || !password || !phone) {
@@ -186,7 +189,7 @@ export default function RegisterScreen() {
                 >
                   <Icon
                     size={22}
-                    color={isSelected ? colors.primary : colors.textMuted}
+                    color={isSelected ? theme.primary : theme.textMuted}
                   />
                   <Text
                     style={[
@@ -215,7 +218,7 @@ export default function RegisterScreen() {
               label: "Email",
               value: email,
               setter: setEmail,
-              placeholder: "you@email.com",
+              placeholder: "your@email.com",
               keyboard: "email-address" as any,
               icon: Mail,
             },
@@ -226,6 +229,7 @@ export default function RegisterScreen() {
               placeholder: "09XXXXXXXXX",
               keyboard: "phone-pad" as any,
               icon: Phone,
+              Capitalize: false,
             },
             {
               label: "Password",
@@ -248,13 +252,13 @@ export default function RegisterScreen() {
               <View key={label} style={styles.inputGroup}>
                 <Text style={styles.label}>{label}</Text>
                 <View style={styles.inputContainer}>
-                  <Icon size={18} color={colors.textMuted} />
+                  <Icon size={18} color={theme.textMuted} />
                   <TextInput
                     style={styles.input}
                     value={value}
                     onChangeText={setter}
                     placeholder={placeholder}
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={theme.textMuted}
                     keyboardType={keyboard}
                     secureTextEntry={secure}
                     autoCapitalize="none"
@@ -270,11 +274,11 @@ export default function RegisterScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={colors.textLight} />
+              <ActivityIndicator color={theme.textPrimary} />
             ) : (
               <>
                 <Text style={styles.createBtnText}>Create account</Text>
-                <ArrowRight size={18} color={colors.textLight} />
+                <ArrowRight size={18} color={theme.textSecondary} />
               </>
             )}
           </TouchableOpacity>
@@ -297,7 +301,7 @@ export default function RegisterScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalInner}>
               <View style={styles.verifyIcon}>
-                <ShieldCheck size={32} color={colors.primary} />
+                <ShieldCheck size={32} color={theme.primary} />
               </View>
               <Text style={styles.modalTitle}>Verify Your Email</Text>
               <Text style={styles.modalSubtitle}>
@@ -309,7 +313,7 @@ export default function RegisterScreen() {
                 <TextInput
                   style={styles.codeInput}
                   placeholder="000000"
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={theme.textMuted}
                   value={verifyCode}
                   onChangeText={(t) =>
                     setVerifyCode(t.replace(/[^0-9]/g, "").slice(0, 6))
@@ -326,11 +330,11 @@ export default function RegisterScreen() {
                 disabled={verifyLoading}
               >
                 {verifyLoading ? (
-                  <ActivityIndicator color={colors.textLight} />
+                  <ActivityIndicator color={theme.textPrimary} />
                 ) : (
                   <>
                     <Text style={styles.verifyBtnText}>Verify Email</Text>
-                    <ArrowRight size={16} color={colors.textLight} />
+                    <ArrowRight size={16} color={theme.textPrimary} />
                   </>
                 )}
               </TouchableOpacity>
@@ -343,7 +347,7 @@ export default function RegisterScreen() {
                 <Text
                   style={[
                     styles.resendText,
-                    resendTimer > 0 && { color: colors.textMuted },
+                    resendTimer > 0 && { color: theme.textMuted },
                   ]}
                 >
                   {resendTimer > 0
@@ -369,10 +373,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   inner: {
     flexGrow: 1,
@@ -388,7 +392,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: colors.primary + "15",
+    backgroundColor: theme.primary + "15",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -399,26 +403,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     textAlign: "center",
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 24,
     padding: 24,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 16,
     elevation: 5,
   },
   label: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 8,
@@ -431,30 +435,30 @@ const styles = StyleSheet.create({
   },
   roleButton: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 14,
     padding: 14,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: theme.border,
     gap: 6,
   },
   roleButtonActive: {
-    backgroundColor: colors.primary + "10",
-    borderColor: colors.primary,
+    backgroundColor: theme.primary + "10",
+    borderColor: theme.primary,
   },
   roleLabel: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     fontWeight: "600",
     marginTop: 4,
   },
   roleLabelActive: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "700",
   },
   roleDesc: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 11,
   },
   inputGroup: {
@@ -464,21 +468,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   input: {
     flex: 1,
     paddingVertical: 14,
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
   },
   createBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
@@ -486,7 +490,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginTop: 8,
-    shadowColor: colors.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -496,7 +500,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   createBtnText: {
-    color: colors.textLight,
+    color: theme.textPrimary,
     fontWeight: "700",
     fontSize: 16,
   },
@@ -505,11 +509,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   linkText: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
   },
   linkHighlight: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "700",
   },
   modalOverlay: {
@@ -523,8 +527,8 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     borderRadius: 24,
-    backgroundColor: colors.surface,
-    shadowColor: colors.shadowColorStrong,
+    backgroundColor: theme.surface,
+    shadowColor: theme.shadowColorStrong,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 1,
     shadowRadius: 24,
@@ -538,39 +542,39 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: colors.primary + "15",
+    backgroundColor: theme.primary + "15",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 8,
   },
   modalSubtitle: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: "center",
     marginBottom: 24,
   },
   emailHighlight: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "600",
   },
   codeInputBox: {
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: theme.border,
     paddingHorizontal: 20,
     paddingVertical: 14,
     width: "100%",
     marginBottom: 20,
   },
   codeInput: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
@@ -581,28 +585,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     borderRadius: 14,
     paddingVertical: 16,
     width: "100%",
-    shadowColor: colors.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   verifyBtnText: {
-    color: colors.textLight,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "700",
   },
   resendText: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: "500",
   },
   cancelText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
   },
 });

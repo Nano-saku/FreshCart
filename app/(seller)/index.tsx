@@ -13,9 +13,12 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
 import { BlurView } from "expo-blur";
 import { Store, Package, ListOrdered, TrendingUp } from "lucide-react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function SellerDashboard() {
   const { profile } = useAuthStore();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [store, setStore] = useState<any>(null);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -75,7 +78,7 @@ export default function SellerDashboard() {
   if (loading) {
     return (
       <AppScreen>
-        <ActivityIndicator color="#000000" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 60 }} />
       </AppScreen>
     );
   }
@@ -92,7 +95,7 @@ export default function SellerDashboard() {
           <BlurView intensity={30} tint="light" style={styles.noStoreCard}>
             <Store
               size={40}
-              color={colors.accent}
+              color={theme.accent}
               style={{ marginBottom: 16 }}
             />
             <Text style={styles.noStoreTitle}>No Store Found</Text>
@@ -104,7 +107,7 @@ export default function SellerDashboard() {
           <View style={styles.content}>
             <BlurView intensity={30} tint="light" style={styles.storeHeader}>
               <View style={styles.storeIcon}>
-                <Store size={24} color={colors.accent} />
+                <Store size={24} color={theme.accent} />
               </View>
               <View>
                 <Text style={styles.storeName}>{store.name}</Text>
@@ -116,7 +119,7 @@ export default function SellerDashboard() {
 
             <View style={styles.statsGrid}>
               <BlurView intensity={30} tint="light" style={styles.statCard}>
-                <TrendingUp size={24} color={colors.accent} />
+                <TrendingUp size={24} color={theme.accent} />
                 <Text style={styles.statValue}>
                   ₱{stats.totalSales.toFixed(2)}
                 </Text>
@@ -142,7 +145,7 @@ export default function SellerDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   container: {
     padding: 20,
     paddingBottom: 100,
@@ -151,12 +154,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   greeting: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 16,
     marginBottom: 4,
   },
   title: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 28,
     fontWeight: "700",
   },
@@ -165,17 +168,17 @@ const styles = StyleSheet.create({
     padding: 30,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.border,
     marginTop: 20,
   },
   noStoreTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 8,
   },
   noStoreText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
@@ -189,7 +192,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.border,
     gap: 16,
   },
   storeIcon: {
@@ -203,12 +206,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   storeName: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
   },
   storeStatus: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginTop: 4,
   },
@@ -223,17 +226,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.border,
     alignItems: "flex-start",
     gap: 12,
   },
   statValue: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "700",
   },
   statLabel: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
   },
 });

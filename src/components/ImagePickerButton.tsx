@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { Camera, Image as ImageIcon, X } from "lucide-react-native";
-import { colors } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 import { useImageUpload } from "../hooks/useImageUpload";
 
 interface ImagePickerButtonProps {
@@ -27,7 +27,9 @@ export function ImagePickerButton({
   path = "products",
   label = "Product Image",
 }: ImagePickerButtonProps) {
+  const { theme, isDark } = useTheme();
   const { uploadImage, uploading } = useImageUpload(bucket);
+  const styles = createStyles(theme, isDark);
 
   const handlePick = async (source: "camera" | "gallery") => {
     const url = await uploadImage(source, path);
@@ -57,17 +59,17 @@ export function ImagePickerButton({
       {currentImage ? (
         <View style={styles.imageContainer}>
           <Image source={{ uri: currentImage }} style={styles.image} />
-          <TouchableOpacity style={styles.removeBtn} onPress={removeImage}>
+          <TouchableOpacity onPress={removeImage} style={styles.removeBtn}>
             <X size={16} color="#fff" />
           </TouchableOpacity>
         </View>
       ) : (
-        <TouchableOpacity style={styles.placeholder} onPress={showPickerOptions}>
+        <TouchableOpacity onPress={showPickerOptions} style={styles.placeholder} activeOpacity={0.8}>
           {uploading ? (
-            <ActivityIndicator color={colors.accent} />
+            <ActivityIndicator color={theme.primary} />
           ) : (
             <>
-              <ImageIcon size={32} color={colors.textMuted} />
+              <ImageIcon size={32} color={theme.textMuted} />
               <Text style={styles.placeholderText}>Tap to add image</Text>
             </>
           )}
@@ -76,12 +78,12 @@ export function ImagePickerButton({
 
       {!currentImage && !uploading && (
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.btn} onPress={() => handlePick("camera")}>
-            <Camera size={18} color={colors.accent} />
+          <TouchableOpacity onPress={() => handlePick("camera")} style={styles.btn}>
+            <Camera size={18} color={theme.textPrimary} />
             <Text style={styles.btnText}>Camera</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btn} onPress={() => handlePick("gallery")}>
-            <ImageIcon size={18} color={colors.accent} />
+          <TouchableOpacity onPress={() => handlePick("gallery")} style={styles.btn}>
+            <ImageIcon size={18} color={theme.textPrimary} />
             <Text style={styles.btnText}>Gallery</Text>
           </TouchableOpacity>
         </View>
@@ -90,26 +92,26 @@ export function ImagePickerButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../constants/colors").lightTheme, isDark: boolean) => StyleSheet.create({
   container: { marginVertical: 8 },
   label: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 8,
   },
   placeholder: {
     height: 180,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.surfaceVariant,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: theme.border,
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
   },
   placeholderText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
   },
   imageContainer: {
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "rgba(239,83,80,0.9)",
+    backgroundColor: theme.error + "E6",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -146,12 +148,12 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.border,
   },
   btnText: {
-    color: "#fff",
+    color: theme.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },

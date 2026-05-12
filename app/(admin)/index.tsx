@@ -11,8 +11,12 @@ import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { ShoppingBag, Package, Store, TrendingUp } from "lucide-react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function AdminDashboard() {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
   const [stats, setStats] = useState({
     orders: 0,
     products: 0,
@@ -63,22 +67,22 @@ export default function AdminDashboard() {
 
   const statCards = [
     {
-      icon: <ShoppingBag size={22} color={colors.accent} />,
+      icon: <ShoppingBag size={22} color={theme.accent} />,
       label: "Total orders",
       val: stats.orders,
     },
     {
-      icon: <Package size={22} color={colors.accent} />,
+      icon: <Package size={22} color={theme.accent} />,
       label: "Products",
       val: stats.products,
     },
     {
-      icon: <Store size={22} color={colors.accent} />,
+      icon: <Store size={22} color={theme.accent} />,
       label: "Stores",
       val: stats.stores,
     },
     {
-      icon: <TrendingUp size={22} color={colors.accent} />,
+      icon: <TrendingUp size={22} color={theme.accent} />,
       label: "Revenue",
       val: `₱${stats.revenue.toFixed(0)}`,
     },
@@ -89,7 +93,7 @@ export default function AdminDashboard() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
         <Text style={styles.title}>Admin dashboard</Text>
         {loading ? (
-          <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
+          <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 40 }} />
         ) : (
           <>
             <View style={styles.statsGrid}>
@@ -144,9 +148,9 @@ export default function AdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   title: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "700",
     marginBottom: 20,
@@ -162,13 +166,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.shadowColorStrong,
+    borderColor: theme.shadowColorStrong,
   },
-  statInner: { backgroundColor: colors.surface, padding: 18, gap: 6 },
-  statVal: { color: colors.textMuted, fontSize: 24, fontWeight: "800" },
-  statLabel: { color: colors.textMuted, fontSize: 12 },
+  statInner: { backgroundColor: theme.surface, padding: 18, gap: 6 },
+  statVal: { color: theme.textMuted, fontSize: 24, fontWeight: "800" },
+  statLabel: { color: theme.textMuted, fontSize: 12 },
   sectionTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
@@ -177,18 +181,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.shadowColorStrong,
+    borderColor: theme.shadowColorStrong,
   },
   orderInner: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     padding: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderCustomer: { color: "#000000", fontWeight: "600", fontSize: 14 },
-  orderStore: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  orderAmount: { color: colors.accent, fontWeight: "700", fontSize: 14 },
+  orderCustomer: { color: theme.textPrimary, fontWeight: "600", fontSize: 14 },
+  orderStore: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
+  orderAmount: { color: theme.accent, fontWeight: "700", fontSize: 14 },
   statusBadge: {
     marginTop: 4,
     paddingHorizontal: 10,
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(168,224,99,0.3)",
   },
   statusText: {
-    color: colors.accent,
+    color: theme.accent,
     fontSize: 10,
     fontWeight: "600",
     textTransform: "capitalize",

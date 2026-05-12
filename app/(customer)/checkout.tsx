@@ -24,6 +24,7 @@ import {
   Truck,
   CheckCircle2,
 } from "lucide-react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 const SHIPPING_METHODS = [
   { id: "standard", name: "Standard", price: 5.0, time: "3-5 business days" },
@@ -43,7 +44,8 @@ export default function CheckoutScreen() {
   const [selectedShipping, setSelectedShipping] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: shipping, 2: address, 3: payment, 4: success
-
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const shipping = SHIPPING_METHODS.find((s) => s.id === selectedShipping);
   const deliveryFee = shipping?.price || 5.0;
   const grandTotal = total() + deliveryFee;
@@ -122,7 +124,7 @@ export default function CheckoutScreen() {
       <AppScreen>
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <CheckCircle2 size={64} color={colors.primary} />
+            <CheckCircle2 size={64} color={theme.primary} />
           </View>
           <Text style={styles.successTitle}>Gotcha!</Text>
           <Text style={styles.successSub}>
@@ -160,7 +162,7 @@ export default function CheckoutScreen() {
               style={styles.backBtn}
               onPress={() => router.back()}
             >
-              <ChevronLeft size={20} color={colors.textPrimary} />
+              <ChevronLeft size={20} color={theme.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.title}>Checkout</Text>
             <View style={{ width: 38 }} />
@@ -223,8 +225,8 @@ export default function CheckoutScreen() {
                       size={22}
                       color={
                         selectedShipping === method.id
-                          ? colors.primary
-                          : colors.textMuted
+                          ? theme.primary
+                          : theme.textMuted
                       }
                     />
                     <View style={{ marginLeft: 12 }}>
@@ -267,7 +269,7 @@ export default function CheckoutScreen() {
               <Text style={styles.sectionLabel}>Delivery Address</Text>
               <View style={styles.inputCard}>
                 <View style={styles.inputHeader}>
-                  <MapPin size={18} color={colors.primary} />
+                  <MapPin size={18} color={theme.primary} />
                   <Text style={styles.inputTitle}>Enter your address</Text>
                 </View>
                 <TextInput
@@ -275,7 +277,7 @@ export default function CheckoutScreen() {
                   value={address}
                   onChangeText={setAddress}
                   placeholder="Full delivery address"
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={theme.textMuted}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
@@ -284,7 +286,7 @@ export default function CheckoutScreen() {
 
               <View style={styles.inputCard}>
                 <View style={styles.inputHeader}>
-                  <FileText size={18} color={colors.primary} />
+                  <FileText size={18} color={theme.primary} />
                   <Text style={styles.inputTitle}>
                     Special notes (optional)
                   </Text>
@@ -294,7 +296,7 @@ export default function CheckoutScreen() {
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Any special instructions?"
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={theme.textMuted}
                   multiline
                   numberOfLines={2}
                   textAlignVertical="top"
@@ -327,10 +329,10 @@ export default function CheckoutScreen() {
                   <View
                     style={[
                       styles.paymentIcon,
-                      { backgroundColor: colors.primary + "10" },
+                      { backgroundColor: theme.primary + "10" },
                     ]}
                   >
-                    <CreditCard size={22} color={colors.primary} />
+                    <CreditCard size={22} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.paymentTitle}>Cash on Delivery</Text>
@@ -390,7 +392,7 @@ export default function CheckoutScreen() {
                   disabled={loading || items.length === 0}
                 >
                   {loading ? (
-                    <ActivityIndicator color={colors.textLight} />
+                    <ActivityIndicator color={theme.textPrimary} />
                   ) : (
                     <Text style={styles.primaryBtnText}>Place order</Text>
                   )}
@@ -404,7 +406,7 @@ export default function CheckoutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) =>  StyleSheet.create({
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -415,14 +417,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
   },
@@ -442,45 +444,45 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: theme.border,
     alignItems: "center",
     justifyContent: "center",
   },
   progressDotActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   progressNum: {
     fontSize: 12,
     fontWeight: "700",
-    color: colors.textMuted,
+    color: theme.textMuted,
   },
   progressNumActive: {
-    color: colors.textLight,
+    color: theme.textMuted,
   },
   progressLabel: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: theme.textMuted,
     marginLeft: 6,
     fontWeight: "500",
   },
   progressLabelActive: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "700",
   },
   progressLine: {
     flex: 1,
     height: 2,
-    backgroundColor: colors.border,
+    backgroundColor: theme.border,
     marginHorizontal: 8,
   },
   progressLineActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   sectionLabel: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 16,
@@ -490,48 +492,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   shippingCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + "05",
+    borderColor: theme.primary,
+    backgroundColor: theme.primary + "05",
   },
   shippingLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
   shippingName: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
     fontWeight: "600",
   },
   shippingNameActive: {
-    color: colors.primary,
+    color: theme.primary,
   },
   shippingTime: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   shippingPrice: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "700",
   },
   shippingPriceActive: {
-    color: colors.primary,
+    color: theme.primary,
   },
   inputCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 18,
     marginBottom: 12,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -544,26 +546,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   inputTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 12,
     padding: 14,
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
     minHeight: 80,
   },
   paymentCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -582,12 +584,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   paymentTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
     fontWeight: "600",
   },
   paymentSub: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
@@ -596,7 +598,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: theme.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -604,14 +606,14 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   summaryCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 18,
     marginBottom: 20,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -623,18 +625,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   summaryItemName: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 13,
     flex: 1,
   },
   summaryItemPrice: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 13,
     fontWeight: "600",
   },
   divider: {
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
+    borderTopColor: theme.divider,
     marginVertical: 12,
   },
   summaryRow: {
@@ -643,21 +645,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   summaryLabel: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
   },
   summaryVal: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },
   totalLabel: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontWeight: "700",
     fontSize: 16,
   },
   totalVal: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "800",
     fontSize: 18,
   },
@@ -668,11 +670,11 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
-    shadowColor: colors.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -682,21 +684,21 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   primaryBtnText: {
-    color: colors.textLight,
+    color: theme.textPrimary,
     fontWeight: "700",
     fontSize: 16,
   },
   secondaryBtn: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   secondaryBtnText: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontWeight: "600",
     fontSize: 16,
   },
@@ -711,18 +713,18 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   successTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 28,
     fontWeight: "800",
   },
   successSub: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 15,
     textAlign: "center",
     marginBottom: 24,

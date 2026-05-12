@@ -9,24 +9,26 @@ import {
   Home,
 } from "lucide-react-native";
 import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function AdminLayout() {
+  const { theme } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: theme.border,
           height: 70,
           paddingBottom: 8,
           paddingTop: 8,
           elevation: 8,
-          shadowColor: colors.shadowColorStrong,
+          shadowColor: theme.shadowColorStrong,
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 1,
           shadowRadius: 12,

@@ -7,7 +7,7 @@ import {
   Package,
   XCircle,
 } from "lucide-react-native";
-import { colors } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 export const STEPS = [
   "pending",
@@ -48,7 +48,8 @@ export function OrderStatusBadge({
   status: string;
   size?: "sm" | "md" | "lg";
 }) {
-  const color = STATUS_COLORS[status] || colors.textMuted;
+  const { theme } = useTheme();
+  const color = STATUS_COLORS[status] || theme.textMuted;
 
   const sizeStyles = {
     sm: { paddingHorizontal: 8, paddingVertical: 2, fontSize: 10 },
@@ -59,12 +60,7 @@ export function OrderStatusBadge({
   const s = sizeStyles[size];
 
   return (
-    <View
-      style={[
-        styles.badge,
-        { backgroundColor: color + "15", borderColor: color + "40" },
-      ]}
-    >
+    <View style={[styles.badge, { borderColor: color + "40", backgroundColor: color + "15" }]}>
       <Text style={[styles.badgeText, { color, fontSize: s.fontSize }]}>
         {status.replace(/_/g, " ")}
       </Text>
@@ -73,16 +69,15 @@ export function OrderStatusBadge({
 }
 
 export function OrderStatusSteps({ status }: { status: string }) {
+  const { theme } = useTheme();
   const currentStep = STEPS.indexOf(status as (typeof STEPS)[number]);
   const isCancelled = status === "cancelled";
 
   if (isCancelled) {
     return (
-      <View style={styles.stepsContainer}>
-        <View style={styles.cancelledContainer}>
-          <XCircle size={24} color={colors.error} />
-          <Text style={styles.cancelledText}>Order Cancelled</Text>
-        </View>
+      <View style={styles.cancelledContainer}>
+        <XCircle size={20} color={theme.error} />
+        <Text style={[styles.cancelledText, { color: theme.error }]}>Order Cancelled</Text>
       </View>
     );
   }
@@ -98,45 +93,27 @@ export function OrderStatusSteps({ status }: { status: string }) {
           <View key={step} style={styles.stepRow}>
             <View style={styles.stepCol}>
               {done ? (
-                <CheckCircle2
-                  size={22}
-                  color={colors.primary}
-                  fill={colors.primaryLight + "40"}
-                />
+                <View style={[styles.activeDot, { borderColor: theme.primary, backgroundColor: theme.primary + "30" }]}>
+                  <CheckCircle2 size={12} color={theme.primary} />
+                </View>
               ) : active ? (
-                <View style={styles.activeDot}>
-                  <View style={styles.innerDot} />
+                <View style={[styles.activeDot, { borderColor: theme.primary, backgroundColor: theme.primary + "30" }]}>
+                  <View style={[styles.innerDot, { backgroundColor: theme.primary }]} />
                 </View>
               ) : (
-                <Circle size={22} color={colors.border} />
+                <Circle size={22} color={theme.border} />
               )}
               {!isLast && (
-                <View
-                  style={[
-                    styles.line,
-                    {
-                      backgroundColor: done ? colors.primary : colors.border,
-                    },
-                  ]}
-                />
+                <View style={[styles.line, { backgroundColor: done ? theme.primary : theme.divider }]} />
               )}
             </View>
-            <View style={[styles.stepInfo, isLast && { paddingBottom: 0 }]}>
-              <Text
-                style={[
-                  styles.stepLabel,
-                  {
-                    color: done
-                      ? colors.primary
-                      : active
-                        ? colors.textPrimary
-                        : colors.textMuted,
-                  },
-                ]}
-              >
+            <View style={styles.stepInfo}>
+              <Text style={[styles.stepLabel, { color: active ? theme.primary : done ? theme.textPrimary : theme.textMuted }]}>
                 {STEP_LABELS[step]}
               </Text>
-              {active && <Text style={styles.stepTime}>In progress</Text>}
+              {active && (
+                <Text style={[styles.stepTime, { color: theme.primary }]}>In progress</Text>
+              )}
             </View>
           </View>
         );
@@ -176,17 +153,14 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.primaryLight + "30",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: colors.primary,
   },
   innerDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
   },
   stepInfo: {
     paddingBottom: 20,
@@ -199,7 +173,6 @@ const styles = StyleSheet.create({
   },
   stepTime: {
     fontSize: 11,
-    color: colors.primary,
     marginTop: 2,
   },
   cancelledContainer: {
@@ -207,13 +180,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 16,
-    backgroundColor: colors.error + "10",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.error + "30",
+    borderColor: "rgba(239,83,80,0.3)",
+    backgroundColor: "rgba(239,83,80,0.1)",
   },
   cancelledText: {
-    color: colors.error,
     fontSize: 14,
     fontWeight: "600",
   },

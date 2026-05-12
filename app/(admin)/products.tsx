@@ -16,6 +16,7 @@ import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2 } from "lucide-react-native";
 import { ImagePickerButton } from "../../src/components/ImagePickerButton";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function AdminProductsScreen() {
   const [products, setProducts] = useState<any[]>([]);
@@ -24,6 +25,8 @@ export default function AdminProductsScreen() {
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -149,12 +152,12 @@ export default function AdminProductsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Products</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color="#000000" />
+          <Plus size={20} color={theme.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={products}
@@ -179,7 +182,7 @@ export default function AdminProductsScreen() {
                     onPress={() => openEdit(item)}
                     style={styles.iconBtn}
                   >
-                    <Pencil size={16} color={colors.accent} />
+                    <Pencil size={16} color={theme.accent} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => deleteProduct(item.id)}
@@ -211,7 +214,7 @@ export default function AdminProductsScreen() {
                 value={form.name}
                 onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
                 placeholder="Product name"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
 
               <Text style={styles.label}>Category</Text>
@@ -262,7 +265,7 @@ export default function AdminProductsScreen() {
                 value={form.description}
                 onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
                 placeholder="Description"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={2}
               />
@@ -273,7 +276,7 @@ export default function AdminProductsScreen() {
                 value={form.unit}
                 onChangeText={(v) => setForm((f) => ({ ...f, unit: v }))}
                 placeholder="piece / kg / pack / liter"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
 
               <ImagePickerButton
@@ -292,7 +295,7 @@ export default function AdminProductsScreen() {
                   onPress={() => setModalVisible(false)}
                   disabled={saving}
                 >
-                  <Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+                  <Text style={{ color: theme.textMuted, fontWeight: "600" }}>
                     Cancel
                   </Text>
                 </TouchableOpacity>
@@ -302,9 +305,9 @@ export default function AdminProductsScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color="#000000" size="small" />
+                    <ActivityIndicator color={theme.textPrimary} size="small" />
                   ) : (
-                    <Text style={{ color: "#000000", fontWeight: "700" }}>
+                    <Text style={{ color: theme.textPrimary, fontWeight: "700" }}>
                       Save
                     </Text>
                   )}
@@ -318,7 +321,7 @@ export default function AdminProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -326,12 +329,12 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
+  title: { color: theme.textPrimary, fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -339,18 +342,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   cardInner: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
   },
-  productName: { color: "#000000", fontWeight: "600", fontSize: 14 },
-  meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  productName: { color: theme.textPrimary, fontWeight: "600", fontSize: 14 },
+  meta: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
   empty: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     textAlign: "center",
     marginTop: 80,
     fontSize: 15,
@@ -374,17 +377,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.surface,
+    borderColor: theme.surface,
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.85)", padding: 24, gap: 4 },
   modalTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
   },
   label: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 6,
     marginTop: 10,
@@ -393,7 +396,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
     padding: 14,
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
@@ -413,16 +416,16 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.2)",
   },
   categoryChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.accent,
+    backgroundColor: theme.primary,
+    borderColor: theme.accent,
   },
   categoryChipText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
     fontWeight: "500",
   },
   categoryChipTextActive: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontWeight: "700",
   },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
@@ -431,14 +434,14 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.shadowColor,
+    borderColor: theme.shadowColor,
     alignItems: "center",
   },
   saveBtn: {
     flex: 1,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
   },
 });

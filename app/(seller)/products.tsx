@@ -17,6 +17,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2, PackageSearch } from "lucide-react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function SellerProducts() {
   const { profile } = useAuthStore();
@@ -24,6 +25,8 @@ export default function SellerProducts() {
   const [storeProducts, setStoreProducts] = useState<any[]>([]);
   const [globalProducts, setGlobalProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   // Modals
   const [modalVisible, setModalVisible] = useState(false);
@@ -169,7 +172,7 @@ export default function SellerProducts() {
   if (loading)
     return (
       <AppScreen>
-        <ActivityIndicator color="#000000" style={{ marginTop: 60 }} />
+        <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 60 }} />
       </AppScreen>
     );
 
@@ -177,7 +180,7 @@ export default function SellerProducts() {
     return (
       <AppScreen>
         <View style={styles.noStoreContainer}>
-          <PackageSearch size={50} color={colors.accent} />
+          <PackageSearch size={50} color={theme.accent} />
           <Text style={styles.noStoreTitle}>No Store Setup</Text>
           <Text style={styles.noStoreText}>
             Please setup your store profile first in the Profile tab before
@@ -193,7 +196,7 @@ export default function SellerProducts() {
       <View style={styles.header}>
         <Text style={styles.title}>My Products</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color="#000000" />
+          <Plus size={20} color={theme.textPrimary }/>
         </TouchableOpacity>
       </View>
 
@@ -227,7 +230,7 @@ export default function SellerProducts() {
                 style={styles.iconBtn}
                 onPress={() => openEdit(item)}
               >
-                <Pencil size={18} color={colors.accent} />
+                <Pencil size={18} color={theme.accent} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconBtn}
@@ -292,7 +295,7 @@ export default function SellerProducts() {
                     onChangeText={(v) => setForm({ ...form, price: v })}
                     keyboardType="numeric"
                     placeholder="0.00"
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={theme.textMuted}
                   />
                 </View>
                 <View style={{ width: 12 }} />
@@ -304,7 +307,7 @@ export default function SellerProducts() {
                     onChangeText={(v) => setForm({ ...form, stock_qty: v })}
                     keyboardType="numeric"
                     placeholder="0"
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={theme.textMuted}
                   />
                 </View>
               </View>
@@ -320,8 +323,8 @@ export default function SellerProducts() {
                     styles.dot,
                     {
                       backgroundColor: form.is_available
-                        ? colors.accent
-                        : colors.textMuted,
+                        ? theme.accent
+                        : theme.textMuted,
                     },
                   ]}
                 />
@@ -346,7 +349,7 @@ export default function SellerProducts() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color="#000000" />
+                    <ActivityIndicator color={theme.textPrimary} />
                   ) : (
                     <Text style={styles.saveText}>Save</Text>
                   )}
@@ -360,7 +363,7 @@ export default function SellerProducts() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -368,12 +371,12 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: "#000000", fontSize: 24, fontWeight: "700" },
+  title: { color: theme.textPrimary, fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -382,20 +385,20 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.surface,
     flexDirection: "row",
     alignItems: "center",
   },
-  productName: { color: "#000000", fontSize: 16, fontWeight: "700" },
-  productMeta: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  productName: { color: theme.textPrimary, fontSize: 16, fontWeight: "700" },
+  productMeta: { color: theme.textMuted, fontSize: 13, marginTop: 2 },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 8,
     gap: 12,
   },
-  price: { color: colors.accent, fontSize: 16, fontWeight: "700" },
-  stock: { color: "#000000", fontSize: 13 },
+  price: { color: theme.accent, fontSize: 16, fontWeight: "700" },
+  stock: { color: theme.textPrimary, fontSize: 13 },
   unavailableBadge: {
     color: "#ef5350",
     fontSize: 12,
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   emptyText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     textAlign: "center",
     marginTop: 60,
     paddingHorizontal: 40,
@@ -424,13 +427,13 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   noStoreTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     marginTop: 16,
     marginBottom: 8,
   },
-  noStoreText: { color: colors.textMuted, textAlign: "center" },
+  noStoreText: { color: theme.textMuted, textAlign: "center" },
 
   modalOverlay: {
     flex: 1,
@@ -441,18 +444,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.surface,
     maxHeight: "80%",
   },
   modalInner: { padding: 24, backgroundColor: "rgba(26,74,26,0.95)" },
   modalTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 16,
   },
   label: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 8,
     marginTop: 12,
@@ -461,7 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 14,
     padding: 16,
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
@@ -477,13 +480,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.2)",
   },
   productChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.accent,
+    backgroundColor: theme.primary,
+    borderColor: theme.accent,
   },
-  productChipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  productChipTextActive: { color: "#000000" },
+  productChipText: { color: theme.textMuted, fontSize: 13, fontWeight: "600" },
+  productChipTextActive: { color: theme.textPrimary },
   readonlyProductName: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 20,
@@ -499,7 +502,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.1)",
   },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  availabilityText: { color: "#000000", fontSize: 15, fontWeight: "500" },
+  availabilityText: { color: theme.textPrimary, fontSize: 15, fontWeight: "500" },
   modalActions: {
     flexDirection: "row",
     gap: 12,
@@ -511,16 +514,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: theme.surface,
     alignItems: "center",
   },
-  cancelText: { color: colors.textMuted, fontWeight: "600", fontSize: 16 },
+  cancelText: { color: theme.textMuted, fontWeight: "600", fontSize: 16 },
   saveBtn: {
     flex: 1,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
   },
-  saveText: { color: "#000000", fontWeight: "700", fontSize: 16 },
+  saveText: { color: theme.textPrimary, fontWeight: "700", fontSize: 16 },
 });

@@ -14,8 +14,11 @@ import { colors } from "../../src/constants/colors";
 import { router } from "expo-router";
 import { OrderStatusBadge } from "../../src/components/OrderStatus";
 import { Package, Clock, ChevronRight } from "lucide-react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function OrdersScreen() {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,7 +37,7 @@ export default function OrdersScreen() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          `*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
+          `*, store:stores(name, address, latitude, longitude), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
         )
         .eq("customer_id", user.id)
         .order("created_at", { ascending: false });
@@ -81,7 +84,7 @@ export default function OrdersScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={orders}
@@ -91,7 +94,7 @@ export default function OrdersScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.primary}
+              tintColor={theme.primary}
             />
           }
           renderItem={({ item }) => (
@@ -103,7 +106,7 @@ export default function OrdersScreen() {
               <View style={styles.cardInner}>
                 <View style={styles.row}>
                   <View style={styles.orderIdContainer}>
-                    <Package size={16} color={colors.primary} />
+                    <Package size={16} color={theme.primary} />
                     <Text style={styles.orderId}>
                       #{item.id.slice(0, 8).toUpperCase()}
                     </Text>
@@ -117,7 +120,7 @@ export default function OrdersScreen() {
 
                 <View style={styles.row}>
                   <View style={styles.metaContainer}>
-                    <Clock size={12} color={colors.textMuted} />
+                    <Clock size={12} color={theme.textMuted} />
                     <Text style={styles.meta}>
                       {new Date(item.created_at).toLocaleDateString("en-PH", {
                         month: "short",
@@ -139,7 +142,7 @@ export default function OrdersScreen() {
                   </Text>
                   <View style={styles.trackBtn}>
                     <Text style={styles.trackText}>Track</Text>
-                    <ChevronRight size={14} color={colors.primary} />
+                    <ChevronRight size={14} color={theme.primary} />
                   </View>
                 </View>
               </View>
@@ -148,7 +151,7 @@ export default function OrdersScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
-                <Package size={48} color={colors.primary} />
+                <Package size={48} color={theme.primary} />
               </View>
               <Text style={styles.emptyTitle}>No orders yet</Text>
               <Text style={styles.emptySub}>
@@ -168,25 +171,25 @@ export default function OrdersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     marginBottom: 20,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 28,
     fontWeight: "800",
   },
   subtitle: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
   orderCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 18,
     marginBottom: 12,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -207,12 +210,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   orderId: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontWeight: "700",
     fontSize: 14,
   },
   storeName: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 13,
   },
   metaContainer: {
@@ -221,7 +224,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   meta: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
   },
   amountRow: {
@@ -231,10 +234,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
+    borderTopColor: theme.divider,
   },
   amount: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "800",
     fontSize: 16,
   },
@@ -242,13 +245,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   trackText: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -262,31 +265,31 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     alignItems: "center",
     justifyContent: "center",
   },
   emptyTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
   },
   emptySub: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: "center",
   },
   browseBtn: {
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.primary + "30",
+    borderColor: theme.primary + "30",
     marginTop: 8,
   },
   browseText: {
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: "600",
     fontSize: 15,
   },

@@ -17,10 +17,13 @@ import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2, Store } from "lucide-react-native";
 import { ImagePickerButton } from "../../src/components/ImagePickerButton";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function AdminStoresScreen() {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [stores, setStores] = useState<any[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -189,12 +192,12 @@ export default function AdminStoresScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Stores</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color="#000000" />
+          <Plus size={20} color={theme.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#000000" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={stores}
@@ -204,7 +207,7 @@ export default function AdminStoresScreen() {
             <BlurView intensity={30} tint="light" style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={styles.iconBox}>
-                  <Store size={24} color={colors.accent} />
+                  <Store size={24} color={theme.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.row}>
@@ -225,7 +228,7 @@ export default function AdminStoresScreen() {
                       <Text
                         style={[
                           styles.badgeText,
-                          { color: item.is_active ? colors.accent : "#ef5350" },
+                          { color: item.is_active ? theme.accent : "#ef5350" },
                         ]}
                       >
                         {item.is_active ? "Active" : "Inactive"}
@@ -258,17 +261,17 @@ export default function AdminStoresScreen() {
                       }
                       trackColor={{
                         false: "rgba(255,255,255,0.15)",
-                        true: colors.primary,
+                        true: theme.primary,
                       }}
                       thumbColor={
-                        item.is_active ? colors.accent : "rgba(255,255,255,0.5)"
+                        item.is_active ? theme.accent : "rgba(255,255,255,0.5)"
                       }
                     />
                     <TouchableOpacity
                       style={styles.iconBtn}
                       onPress={() => openEdit(item)}
                     >
-                      <Pencil size={15} color={colors.accent} />
+                      <Pencil size={15} color={theme.accent} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconBtn}
@@ -335,7 +338,7 @@ export default function AdminStoresScreen() {
                     value={(form as any)[key]}
                     onChangeText={(v) => setForm((f) => ({ ...f, [key]: v }))}
                     placeholder={placeholder}
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={theme.textMuted}
                     keyboardType={keyboard as any}
                   />
                 </View>
@@ -360,10 +363,10 @@ export default function AdminStoresScreen() {
                   }
                   trackColor={{
                     false: "rgba(255,255,255,0.15)",
-                    true: colors.primary,
+                    true: theme.primary,
                   }}
                   thumbColor={
-                    form.is_active ? colors.accent : "rgba(255,255,255,0.5)"
+                    form.is_active ? theme.accent : "rgba(255,255,255,0.5)"
                   }
                 />
               </View>
@@ -374,7 +377,7 @@ export default function AdminStoresScreen() {
                   onPress={() => setModalVisible(false)}
                   disabled={saving}
                 >
-                  <Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+                  <Text style={{ color: theme.textMuted, fontWeight: "600" }}>
                     Cancel
                   </Text>
                 </TouchableOpacity>
@@ -384,9 +387,9 @@ export default function AdminStoresScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color="#000000" size="small" />
+                    <ActivityIndicator color={theme.textPrimary} size="small" />
                   ) : (
-                    <Text style={{ color: "#000000", fontWeight: "700" }}>
+                    <Text style={{ color: theme.textPrimary, fontWeight: "700" }}>
                       {editStore ? "Update" : "Save"}
                     </Text>
                   )}
@@ -400,7 +403,7 @@ export default function AdminStoresScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -408,12 +411,12 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
+  title: { color: theme.textPrimary, fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -421,10 +424,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   cardInner: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     padding: 16,
     flexDirection: "row",
     gap: 14,
@@ -438,7 +441,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   row: {
     flexDirection: "row",
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  storeName: { color: "#000000", fontWeight: "700", fontSize: 15 },
+  storeName: { color: theme.textPrimary, fontWeight: "700", fontSize: 15 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -454,7 +457,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   badgeText: { fontSize: 11, fontWeight: "600" },
-  meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  meta: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
   owner: { color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 4 },
   actions: {
     flexDirection: "row",
@@ -471,7 +474,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   empty: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     textAlign: "center",
     marginTop: 80,
     fontSize: 15,
@@ -486,17 +489,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.shadowColor,
+    borderColor: theme.shadowColor,
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.9)", padding: 24, gap: 2 },
   modalTitle: {
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 8,
   },
   label: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 6,
     marginTop: 10,
@@ -505,7 +508,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
     padding: 14,
-    color: "#000000",
+    color: theme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
@@ -522,14 +525,14 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
     alignItems: "center",
   },
   saveBtn: {
     flex: 1,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
   },
 });

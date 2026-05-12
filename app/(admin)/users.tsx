@@ -14,6 +14,7 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   User,
   Shield,
@@ -40,6 +41,8 @@ export default function AdminUsersScreen() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const { theme } = useTheme();
+const styles = createStyles(theme);
   const [modalVisible, setModalVisible] = useState(false);
   const [editRole, setEditRole] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -211,7 +214,7 @@ export default function AdminUsersScreen() {
       case "banned":
         return "#6B7280";
       default:
-        return colors.accent;
+        return theme.accent;
     }
   };
 
@@ -234,7 +237,7 @@ export default function AdminUsersScreen() {
               <BlurView intensity={30} tint="light" style={styles.card}>
                 <View style={styles.cardInner}>
                   <View style={styles.avatarPlaceholder}>
-                    <User size={24} color={colors.accent} />
+                    <User size={24} color={theme.accent} />
                   </View>
 
                   <View style={{ flex: 1 }}>
@@ -264,13 +267,13 @@ export default function AdminUsersScreen() {
                     )}
 
                     <View style={styles.infoRow}>
-                      <Shield size={14} color={colors.textMuted} />
+                      <Shield size={14} color={theme.textMuted} />
                       <Text style={styles.infoText}>{item.role}</Text>
 
                       {item.phone && (
                         <>
                           <Text style={styles.dot}>•</Text>
-                          <Phone size={14} color={colors.textMuted} />
+                          <Phone size={14} color={theme.textMuted} />
                           <Text style={styles.infoText}>{item.phone}</Text>
                         </>
                       )}
@@ -288,7 +291,7 @@ export default function AdminUsersScreen() {
                     )}
                   </View>
 
-                  <ChevronRight size={20} color={colors.textMuted} />
+                  <ChevronRight size={20} color={theme.textMuted} />
                 </View>
               </BlurView>
             </TouchableOpacity>
@@ -415,18 +418,18 @@ export default function AdminUsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     padding: 20,
     paddingBottom: 8,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "700",
   },
   subtitle: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
     marginTop: 4,
   },
@@ -434,10 +437,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.shadowColorStrong,
+    borderColor: theme.shadowColorStrong,
   },
   cardInner: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -458,7 +461,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   userName: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontWeight: "600",
     fontSize: 16,
     flex: 1,
@@ -473,7 +476,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   meta: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 4,
   },
@@ -484,12 +487,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   infoText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     textTransform: "capitalize",
   },
   dot: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginHorizontal: 4,
   },
@@ -499,7 +502,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   emptyText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     textAlign: "center",
     marginTop: 40,
     fontSize: 16,
@@ -514,7 +517,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.shadowColorStrong,
+    borderColor: theme.shadowColorStrong,
     maxHeight: "85%",
   },
   modalInner: {
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   userEmail: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 14,
     marginTop: 4,
   },
@@ -564,7 +567,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   label: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     marginBottom: 10,
     marginTop: 8,
@@ -584,11 +587,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   roleChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.accent,
+    backgroundColor: theme.primary,
+    borderColor: theme.accent,
   },
   roleChipText: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -608,7 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   saveRoleBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   divider: {
     height: 1,

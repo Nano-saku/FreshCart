@@ -10,13 +10,14 @@ import {
 import { AppScreen } from "../../src/components/AppScreen";
 import { useCartStore } from "../../src/stores/cartStore";
 import { CartItem } from "../../src/components/CartItem";
-import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import { router } from "expo-router";
 import { ShoppingBag, ChevronRight } from "lucide-react-native";
 
 export default function CartScreen() {
-  const { items, loading, fetchCart, removeItem, updateQuantity, total } =
-    useCartStore();
+  const { theme } = useTheme();
+  const { items, loading, fetchCart, removeItem, updateQuantity, total } = useCartStore();
+  const styles = createStyles(theme);
 
   useEffect(() => {
     fetchCart();
@@ -30,14 +31,14 @@ export default function CartScreen() {
     <AppScreen>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>My Cart</Text>
-        <Text style={styles.sub}>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>My Cart</Text>
+        <Text style={[styles.sub, { color: theme.textSecondary }]}>
           {items.length} item{items.length !== 1 ? "s" : ""}
         </Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={items}
@@ -52,33 +53,27 @@ export default function CartScreen() {
           )}
           ListFooterComponent={() =>
             items.length > 0 ? (
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Order Summary</Text>
-
+              <View style={[styles.summaryCard, { backgroundColor: theme.surface, shadowColor: theme.shadowColor }]}>
+                <Text style={[styles.summaryTitle, { color: theme.textPrimary }]}>Order Summary</Text>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Subtotal</Text>
-                  <Text style={styles.summaryVal}>${subtotal.toFixed(2)}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Subtotal</Text>
+                  <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>${subtotal.toFixed(2)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                  <Text style={styles.summaryVal}>
-                    ${deliveryFee.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery Fee</Text>
+                  <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>${deliveryFee.toFixed(2)}</Text>
                 </View>
-
-                <View style={styles.divider} />
-
+                <View style={[styles.divider, { borderTopColor: theme.divider }]} />
                 <View style={styles.summaryRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalVal}>${grandTotal.toFixed(2)}</Text>
+                  <Text style={[styles.totalLabel, { color: theme.textPrimary }]}>Total</Text>
+                  <Text style={[styles.totalVal, { color: theme.primary }]}>${grandTotal.toFixed(2)}</Text>
                 </View>
-
                 <TouchableOpacity
-                  style={styles.checkoutBtn}
                   onPress={() => router.push("/(customer)/checkout")}
+                  style={[styles.checkoutBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
                 >
-                  <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-                  <ChevronRight size={20} color={colors.textLight} />
+                  <Text style={[styles.checkoutText, { color: "#fff" }]}>Proceed to Checkout</Text>
+                  <ChevronRight size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             ) : null
@@ -88,18 +83,16 @@ export default function CartScreen() {
 
       {items.length === 0 && !loading && (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <ShoppingBag size={48} color={colors.primary} />
+          <View style={[styles.emptyIcon, { backgroundColor: theme.primary + "10" }]}>
+            <ShoppingBag size={40} color={theme.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySub}>
-            Add some fresh items to get started
-          </Text>
+          <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Your cart is empty</Text>
+          <Text style={[styles.emptySub, { color: theme.textSecondary }]}>Add some fresh items to get started</Text>
           <TouchableOpacity
-            style={styles.browseBtn}
             onPress={() => router.push("/(customer)")}
+            style={[styles.browseBtn, { backgroundColor: theme.primary + "10", borderColor: theme.primary + "30" }]}
           >
-            <Text style={styles.browseText}>Browse Products</Text>
+            <Text style={[styles.browseText, { color: theme.primary }]}>Browse Products</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -107,33 +100,28 @@ export default function CartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     marginBottom: 20,
   },
   title: {
-    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: "800",
   },
   sub: {
-    color: colors.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
   summaryCard: {
-    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
     marginTop: 16,
-    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 3,
   },
   summaryTitle: {
-    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 16,
@@ -144,31 +132,25 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryLabel: {
-    color: colors.textSecondary,
     fontSize: 14,
   },
   summaryVal: {
-    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },
   divider: {
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
     marginVertical: 12,
   },
   totalLabel: {
-    color: colors.textPrimary,
     fontWeight: "700",
     fontSize: 18,
   },
   totalVal: {
-    color: colors.primary,
     fontWeight: "800",
     fontSize: 20,
   },
   checkoutBtn: {
-    backgroundColor: colors.primary,
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
@@ -176,14 +158,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   checkoutText: {
-    color: colors.textLight,
     fontWeight: "700",
     fontSize: 16,
   },
@@ -198,30 +178,24 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.primary + "10",
     alignItems: "center",
     justifyContent: "center",
   },
   emptyTitle: {
-    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: "700",
   },
   emptySub: {
-    color: colors.textSecondary,
     fontSize: 14,
   },
   browseBtn: {
-    backgroundColor: colors.primary + "10",
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.primary + "30",
     marginTop: 8,
   },
   browseText: {
-    color: colors.primary,
     fontWeight: "600",
     fontSize: 15,
   },

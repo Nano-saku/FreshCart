@@ -15,13 +15,14 @@ import { router } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "../../src/lib/supabase";
-import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, Lock, Fingerprint, ArrowRight } from "lucide-react-native";
 
 const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
 const BIOMETRIC_UNLOCKED_KEY = "biometric_unlocked";
 
 export default function LoginScreen() {
+  const { theme, isDark } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,16 +37,12 @@ export default function LoginScreen() {
   const initializeAuth = async () => {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    const biometricEnabled = await SecureStore.getItemAsync(
-      BIOMETRIC_ENABLED_KEY,
-    );
+    const biometricEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
 
     setBiometricAvailable(hasHardware && isEnrolled);
     setBiometricEnabled(biometricEnabled === "true");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
       if (biometricEnabled === "true" && hasHardware && isEnrolled) {
@@ -57,18 +54,14 @@ export default function LoginScreen() {
 
         if (result.success) {
           await SecureStore.setItemAsync(BIOMETRIC_UNLOCKED_KEY, "true");
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
+          const { data: { user } } = await supabase.auth.getUser();
           if (user) await fetchProfileAndRoute(user);
         } else {
           setCheckingSession(false);
           return;
         }
       } else {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (user) await fetchProfileAndRoute(user);
       }
     }
@@ -79,10 +72,7 @@ export default function LoginScreen() {
   const handleManualLogin = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         setLoading(false);
@@ -140,14 +130,10 @@ export default function LoginScreen() {
 
     if (result.success) {
       await SecureStore.setItemAsync(BIOMETRIC_UNLOCKED_KEY, "true");
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (user) await fetchProfileAndRoute(user);
       } else {
         Alert.alert("No session", "Please sign in manually first.");
@@ -161,131 +147,117 @@ export default function LoginScreen() {
     else router.replace("/(admin)");
   };
 
+  const styles = createStyles(theme);
+
   if (checkingSession) {
     return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.inner}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoEmoji}>🥬</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.primary + "15" }]}>
+            <Text style={styles.logoEmoji}>🥬</Text>
+          </View>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>FreshCart</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Fresh groceries delivered to your door
+          </Text>
+        </View>
+
+        {/* Form Card */}
+        <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.shadowColor }]}>
+          <Text style={[styles.welcomeText, { color: theme.textPrimary }]}>Welcome back!</Text>
+          <Text style={[styles.welcomeSub, { color: theme.textSecondary }]}>Sign in to continue</Text>
+
+          {/* Email */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>Email</Text>
+            <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <User size={18} color={theme.textMuted} />
+              <TextInput
+                style={[styles.input, { color: theme.textPrimary }]}
+                placeholder="your@email.com"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
             </View>
-            <Text style={styles.title}>FreshCart</Text>
-            <Text style={styles.subtitle}>
-              Fresh groceries delivered to your door
-            </Text>
           </View>
 
-          {/* Form Card */}
-          <View style={styles.card}>
-            <Text style={styles.welcomeText}>Welcome back!</Text>
-            <Text style={styles.welcomeSub}>Sign in to continue</Text>
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.inputContainer}>
-                <User size={18} color={colors.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="your@email.com"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+          {/* Password */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>Password</Text>
+            <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <Lock size={18} color={theme.textMuted} />
+              <TextInput
+                style={[styles.input, { color: theme.textPrimary }]}
+                placeholder="••••••••"
+                placeholderTextColor={theme.textMuted}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
+              />
             </View>
+          </View>
 
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputContainer}>
-                <Lock size={18} color={colors.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
-                  secureTextEntry
-                />
-              </View>
-            </View>
+          {/* Biometric login button */}
+          {biometricEnabled && biometricAvailable && (
+            <TouchableOpacity onPress={handleBiometricLogin} style={[styles.biometricBtn, { borderColor: theme.primary + "30", backgroundColor: theme.primary + "10" }]}>
+              <Fingerprint size={20} color={theme.primary} />
+              <Text style={[styles.biometricText, { color: theme.primary }]}>Log in with Fingerprint</Text>
+            </TouchableOpacity>
+          )}
 
-            {/* Biometric login button */}
-            {biometricEnabled && biometricAvailable && (
-              <TouchableOpacity
-                style={styles.biometricBtn}
-                onPress={handleBiometricLogin}
-                disabled={loading}
-              >
-                <Fingerprint size={20} color={colors.primary} />
-                <Text style={styles.biometricText}>
-                  Log in with Fingerprint
-                </Text>
-              </TouchableOpacity>
+          {/* Sign In Button */}
+          <TouchableOpacity
+            onPress={handleManualLogin}
+            disabled={loading || !email || !password}
+            style={[
+              styles.signInBtn,
+              { backgroundColor: theme.primary, shadowColor: theme.primary },
+              (loading || !email || !password) && styles.signInBtnDisabled,
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={[styles.signInText, { color: "#fff" }]}>Sign in</Text>
+                <ArrowRight size={18} color="#fff" />
+              </>
             )}
+          </TouchableOpacity>
+        </View>
 
-            {/* Sign In Button */}
-            <TouchableOpacity
-              style={[styles.signInBtn, loading && styles.signInBtnDisabled]}
-              onPress={handleManualLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.textLight} />
-              ) : (
-                <>
-                  <Text style={styles.signInText}>Sign in</Text>
-                  <ArrowRight size={18} color={colors.textLight} />
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Register Link */}
-            <TouchableOpacity
-              onPress={() => router.replace("/register")}
-              style={styles.link}
-            >
-              <Text style={styles.linkText}>
-                Don't have an account?{" "}
-                <Text style={styles.linkHighlight}>Sign up</Text>
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        {/* Register Link */}
+        <TouchableOpacity onPress={() => router.replace("/register")} style={styles.link}>
+          <Text style={[styles.linkText, { color: theme.textSecondary }]}>
+            Don't have an account?{" "}
+            <Text style={[styles.linkHighlight, { color: theme.primary }]}>Sign up</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   inner: {
     flexGrow: 1,
@@ -301,7 +273,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: colors.primary + "15",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -312,19 +283,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "800",
-    color: colors.textPrimary,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
     textAlign: "center",
   },
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
-    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 16,
@@ -333,19 +300,16 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 22,
     fontWeight: "700",
-    color: colors.textPrimary,
     marginBottom: 4,
   },
   welcomeSub: {
     fontSize: 14,
-    color: colors.textSecondary,
     marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 8,
@@ -354,17 +318,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.background,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   input: {
     flex: 1,
     paddingVertical: 14,
-    color: colors.textPrimary,
     fontSize: 15,
   },
   biometricBtn: {
@@ -372,27 +333,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: colors.primary + "10",
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.primary + "30",
   },
   biometricText: {
-    color: colors.primary,
     fontSize: 14,
     fontWeight: "600",
   },
   signInBtn: {
-    backgroundColor: colors.primary,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -402,7 +358,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   signInText: {
-    color: colors.textLight,
     fontWeight: "700",
     fontSize: 16,
   },
@@ -411,11 +366,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   linkText: {
-    color: colors.textSecondary,
     fontSize: 14,
   },
   linkHighlight: {
-    color: colors.primary,
     fontWeight: "700",
   },
 });

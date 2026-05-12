@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { supabase } from "../../src/lib/supabase";
-import { colors } from "../../src/constants/colors";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   Search,
   SlidersHorizontal,
@@ -42,6 +42,8 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const {
     data: results,
@@ -91,24 +93,24 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
         <View style={styles.searchBar}>
-          <Search size={18} color={colors.textMuted} />
+          <Search size={18} color={theme.textMuted} />
           <TextInput
             style={styles.input}
             value={query}
             onChangeText={handleSearch}
             placeholder="Search fresh products..."
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={theme.textMuted}
             autoFocus
             autoCapitalize="none"
             returnKeyType="search"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearBtn}>
-              <X size={18} color={colors.textMuted} />
+              <X size={18} color={theme.textMuted} />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.filterBtn}>
-            <SlidersHorizontal size={18} color={colors.textPrimary} />
+            <SlidersHorizontal size={18} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -126,14 +128,14 @@ export default function SearchScreen() {
 
           {isLoading && (
             <ActivityIndicator
-              color={colors.primary}
+              color={theme.primary}
               style={{ marginTop: 40 }}
             />
           )}
 
           {!isLoading && results?.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Search size={48} color={colors.textMuted} />
+              <Search size={48} color={theme.textMuted} />
               <Text style={styles.emptyTitle}>No products found</Text>
               <Text style={styles.emptySub}>Try a different search term</Text>
             </View>
@@ -149,7 +151,7 @@ export default function SearchScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor={colors.primary}
+                tintColor={theme.primary}
               />
             }
           />
@@ -165,7 +167,7 @@ export default function SearchScreen() {
             <>
               {/* Recent Searches */}
               <View style={styles.sectionHeader}>
-                <Clock size={18} color={colors.primary} />
+                <Clock size={18} color={theme.primary} />
                 <Text style={styles.sectionTitle}>Recent</Text>
                 <TouchableOpacity onPress={() => setRecentSearches([])}>
                   <Text style={styles.clearAll}>Clear</Text>
@@ -178,20 +180,20 @@ export default function SearchScreen() {
                   style={styles.recentItem}
                   onPress={() => handleSearch(item)}
                 >
-                  <Clock size={16} color={colors.textMuted} />
+                  <Clock size={16} color={theme.textMuted} />
                   <Text style={styles.recentText}>{item}</Text>
                   <TouchableOpacity
                     onPress={() => removeRecent(item)}
                     style={styles.recentRemove}
                   >
-                    <X size={16} color={colors.textMuted} />
+                    <X size={16} color={theme.textMuted} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
 
               {/* Trending */}
               <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-                <TrendingUp size={18} color={colors.primary} />
+                <TrendingUp size={18} color={theme.primary} />
                 <Text style={styles.sectionTitle}>Trending</Text>
               </View>
 
@@ -214,12 +216,12 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   header: {
     marginBottom: 16,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 28,
     fontWeight: "800",
     marginBottom: 16,
@@ -228,13 +230,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadowColor,
+    borderColor: theme.border,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -242,7 +244,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
     paddingVertical: 12,
   },
@@ -253,7 +255,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -261,7 +263,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   resultsText: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     fontWeight: "500",
   },
@@ -272,13 +274,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "700",
     flex: 1,
   },
   clearAll: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: "600",
   },
@@ -287,12 +289,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    borderBottomColor: theme.divider,
     gap: 12,
   },
   recentText: {
     flex: 1,
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
   },
   recentRemove: {
@@ -304,15 +306,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   trendingChip: {
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.primary + "20",
+    borderColor: theme.primary + "20",
   },
   trendingText: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -323,12 +325,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "600",
   },
   emptySub: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
   },
 });

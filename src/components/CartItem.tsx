@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { colors } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 import { Minus, Plus, Trash2 } from "lucide-react-native";
 
 interface CartItemProps {
@@ -19,16 +19,16 @@ interface CartItemProps {
 }
 
 export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <View style={styles.card}>
       <View style={styles.cardInner}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
           {item.product.image_url ? (
-            <Image
-              source={{ uri: item.product.image_url }}
-              style={styles.image}
-            />
+            <Image source={{ uri: item.product.image_url }} style={styles.image} />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={{ fontSize: 24 }}>🛒</Text>
@@ -41,46 +41,32 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
           <Text style={styles.itemName}>{item.product.name}</Text>
           <Text style={styles.itemStore}>{item.store_name}</Text>
           <Text style={styles.itemUnit}>{item.product.unit}</Text>
-
           <View style={styles.priceRow}>
             <Text style={styles.itemPrice}>
               ${(item.price * item.quantity).toFixed(2)}
             </Text>
-            <Text style={styles.unitPrice}>${item.price.toFixed(2)} each</Text>
+            <Text style={styles.unitPrice}>
+              ${item.price.toFixed(2)} each
+            </Text>
           </View>
         </View>
 
         {/* Right Side - Qty & Delete */}
         <View style={styles.right}>
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => onRemove(item.id)}
-          >
-            <Trash2 size={16} color={colors.error} />
+          <TouchableOpacity onPress={() => onRemove(item.id)} style={styles.deleteBtn}>
+            <Trash2 size={18} color={theme.error} />
           </TouchableOpacity>
-
           <View style={styles.qtyRow}>
             <TouchableOpacity
-              style={[
-                styles.qtyBtn,
-                item.quantity <= 1 && styles.qtyBtnDisabled,
-              ]}
               onPress={() => onUpdateQuantity(item.id, item.quantity - 1)}
               disabled={item.quantity <= 1}
+              style={[styles.qtyBtn, item.quantity <= 1 && styles.qtyBtnDisabled]}
             >
-              <Minus
-                size={14}
-                color={
-                  item.quantity <= 1 ? colors.textMuted : colors.textPrimary
-                }
-              />
+              <Minus size={14} color={item.quantity <= 1 ? theme.textMuted : theme.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.qty}>{item.quantity}</Text>
-            <TouchableOpacity
-              style={styles.qtyBtn}
-              onPress={() => onUpdateQuantity(item.id, item.quantity + 1)}
-            >
-              <Plus size={14} color={colors.textPrimary} />
+            <TouchableOpacity onPress={() => onUpdateQuantity(item.id, item.quantity + 1)} style={styles.qtyBtn}>
+              <Plus size={14} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -89,11 +75,11 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
   card: {
     borderRadius: 16,
-    backgroundColor: colors.surface,
-    shadowColor: colors.shadowColor,
+    backgroundColor: theme.surface,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 6,
@@ -110,7 +96,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: theme.surfaceVariant,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -131,18 +117,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   itemName: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 15,
     fontWeight: "600",
     marginBottom: 2,
   },
   itemStore: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   itemUnit: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 11,
     marginTop: 2,
   },
@@ -153,12 +139,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   itemPrice: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 16,
     fontWeight: "700",
   },
   unitPrice: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
   },
   right: {
@@ -174,31 +160,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: theme.surfaceVariant,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   qtyBtn: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 1,
     shadowRadius: 2,
     elevation: 1,
   },
   qtyBtnDisabled: {
-    backgroundColor: colors.borderLight,
+    backgroundColor: theme.borderLight,
   },
   qty: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontWeight: "600",
     fontSize: 14,
     minWidth: 20,

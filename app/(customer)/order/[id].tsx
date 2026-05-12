@@ -12,6 +12,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { AppScreen } from "../../../src/components/AppScreen";
 import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
+import { useTheme } from "../../../src/contexts/ThemeContext";
 import {
   OrderStatusSteps,
   OrderStatusBadge,
@@ -31,6 +32,8 @@ export default function OrderTrackingScreen() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const fetchOrder = async () => {
     try {
@@ -84,7 +87,7 @@ export default function OrderTrackingScreen() {
   if (loading) {
     return (
       <AppScreen>
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <ActivityIndicator color={theme.primary} style={{ flex: 1 }} />
       </AppScreen>
     );
   }
@@ -113,7 +116,7 @@ export default function OrderTrackingScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor={theme.primary}
           />
         }
       >
@@ -123,7 +126,7 @@ export default function OrderTrackingScreen() {
             style={styles.iconBtn}
             onPress={() => router.back()}
           >
-            <ChevronLeft size={22} color={colors.textPrimary} />
+            <ChevronLeft size={22} color={theme.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.title}>Track Order</Text>
           <View style={{ width: 42 }} />
@@ -140,7 +143,7 @@ export default function OrderTrackingScreen() {
           <View style={styles.statusHeader}>
             <OrderStatusBadge status={order?.status} size="md" />
             <View style={styles.dateBadge}>
-              <Clock size={14} color={colors.primary} />
+              <Clock size={14} color={theme.primary} />
               <Text style={styles.statusDate}>
                 {new Date(order?.created_at).toLocaleDateString("en-PH", {
                   month: "short",
@@ -156,7 +159,7 @@ export default function OrderTrackingScreen() {
         {/* Order Items */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Package size={20} color={colors.primary} />
+            <Package size={20} color={theme.primary} />
             <Text style={styles.cardTitle}>Items Ordered</Text>
           </View>
 
@@ -181,7 +184,7 @@ export default function OrderTrackingScreen() {
             <Text
               style={[
                 styles.itemName,
-                { color: colors.textPrimary, fontWeight: "700" },
+                { color: theme.textPrimary, fontWeight: "700" },
               ]}
             >
               Total
@@ -195,7 +198,7 @@ export default function OrderTrackingScreen() {
         {/* Delivery Info */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <MapPin size={20} color={colors.primary} />
+            <MapPin size={20} color={theme.primary} />
             <Text style={styles.cardTitle}>Delivery Details</Text>
           </View>
 
@@ -206,7 +209,7 @@ export default function OrderTrackingScreen() {
 
           {order?.notes && (
             <View style={styles.infoRow}>
-              <FileText size={16} color={colors.textMuted} />
+              <FileText size={16} color={theme.textMuted} />
               <Text style={[styles.infoValue, { marginLeft: 8 }]}>
                 {order.notes}
               </Text>
@@ -218,11 +221,11 @@ export default function OrderTrackingScreen() {
         {order?.store?.phone && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Phone size={20} color={colors.primary} />
+              <Phone size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Store Contact</Text>
             </View>
             <TouchableOpacity style={styles.phoneRow}>
-              <Phone size={16} color={colors.primary} />
+              <Phone size={16} color={theme.primary} />
               <Text style={styles.phoneText}>{order.store.phone}</Text>
             </TouchableOpacity>
           </View>
@@ -231,7 +234,7 @@ export default function OrderTrackingScreen() {
         {/* Map Placeholder */}
         <View style={styles.mapCard}>
           <View style={styles.mapPlaceholder}>
-            <Truck size={40} color={colors.primary} />
+            <Truck size={40} color={theme.primary} />
             <Text style={styles.mapText}>Order is on the way!</Text>
             <Text style={styles.mapSub}>Estimated arrival: 22:55</Text>
           </View>
@@ -241,7 +244,7 @@ export default function OrderTrackingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) => StyleSheet.create({
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -252,14 +255,14 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
   },
@@ -267,21 +270,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   orderId: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 24,
     fontWeight: "800",
   },
   storeName: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
   statusCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -297,22 +300,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   statusDate: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 12,
     fontWeight: "600",
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -325,7 +328,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontWeight: "700",
     fontSize: 16,
   },
@@ -338,11 +341,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     marginRight: 10,
   },
   itemName: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 14,
     flex: 1,
   },
@@ -352,18 +355,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   itemQty: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 13,
   },
   itemPrice: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 14,
     fontWeight: "600",
     minWidth: 60,
     textAlign: "right",
   },
   totalPrice: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 18,
     fontWeight: "800",
     minWidth: 60,
@@ -371,21 +374,21 @@ const styles = StyleSheet.create({
   },
   divider: {
     borderTopWidth: 1,
-    borderTopColor: colors.divider,
+    borderTopColor: theme.divider,
     marginVertical: 12,
   },
   infoRow: {
     marginBottom: 12,
   },
   infoLabel: {
-    color: colors.textMuted,
+    color: theme.textMuted,
     fontSize: 12,
     marginBottom: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   infoValue: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 14,
     lineHeight: 22,
   },
@@ -393,23 +396,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: colors.primary + "10",
+    backgroundColor: theme.primary + "10",
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.primary + "20",
+    borderColor: theme.primary + "20",
   },
   phoneText: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 15,
     fontWeight: "600",
   },
   mapCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 30,
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -420,20 +423,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
     borderStyle: "dashed",
   },
   mapText: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "600",
     marginTop: 12,
   },
   mapSub: {
-    color: colors.textSecondary,
+    color: theme.textSecondary,
     fontSize: 13,
     marginTop: 4,
   },
@@ -444,18 +447,18 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   errorText: {
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "600",
   },
   backBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
   backBtnText: {
-    color: colors.textLight,
+    color: theme.textPrimary,
     fontSize: 15,
     fontWeight: "600",
   },
