@@ -7,12 +7,13 @@ import {
   Animated,
 } from "react-native";
 import { useCartStore } from "../stores/cartStore";
-import { colors } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 import { router } from "expo-router";
 import { Plus, ShoppingCart, Heart } from "lucide-react-native";
 import { useState, useRef } from "react";
 
 export function ProductCard({ item }: { item: any }) {
+  const { theme } = useTheme();
   const addItem = useCartStore((s) => s.addItem);
   const [adding, setAdding] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -40,6 +41,7 @@ export function ProductCard({ item }: { item: any }) {
   const product = item.product || {};
   const price = item.price || 0;
   const stockQty = item.stock_qty || 0;
+  const styles = createStyles(theme);
 
   return (
     <TouchableOpacity
@@ -53,7 +55,7 @@ export function ProductCard({ item }: { item: any }) {
           <Image source={{ uri: product.image_url }} style={styles.image} />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <ShoppingCart size={32} color={colors.textMuted} />
+            <ShoppingCart size={32} color={theme.textMuted} />
           </View>
         )}
 
@@ -72,8 +74,8 @@ export function ProductCard({ item }: { item: any }) {
         >
           <Heart
             size={18}
-            color={liked ? colors.error : colors.textMuted}
-            fill={liked ? colors.error : "transparent"}
+            color={liked ? theme.error : theme.textMuted}
+            fill={liked ? theme.error : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -103,9 +105,9 @@ export function ProductCard({ item }: { item: any }) {
               disabled={adding || stockQty <= 0}
             >
               {adding ? (
-                <ShoppingCart size={16} color={colors.textLight} />
+                <ShoppingCart size={16} color="#FFFFFF" />
               ) : (
-                <Plus size={18} color={colors.textLight} />
+                <Plus size={18} color="#FFFFFF" />
               )}
             </TouchableOpacity>
           </Animated.View>
@@ -119,14 +121,14 @@ export function ProductCard({ item }: { item: any }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
   card: {
     flex: 1,
     margin: 6,
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     overflow: "hidden",
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -136,7 +138,7 @@ const styles = StyleSheet.create({
     position: "relative",
     width: "100%",
     height: 140,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: theme.surfaceVariant,
   },
   image: {
     width: "100%",
@@ -153,13 +155,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: colors.error,
+    backgroundColor: theme.error,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   discountText: {
-    color: "#000000",
+    color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "700",
   },
@@ -170,10 +172,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 4,
@@ -185,12 +187,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     fontWeight: "600",
-    color: colors.textPrimary,
+    color: theme.textPrimary,
     marginBottom: 2,
   },
   unit: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: theme.textMuted,
     marginBottom: 8,
   },
   footer: {
@@ -201,32 +203,32 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.primary,
+    color: theme.primary,
   },
   originalPrice: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: theme.textMuted,
     textDecorationLine: "line-through",
   },
   addBtn: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
   addBtnActive: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: theme.primaryDark,
   },
   lowStock: {
     fontSize: 11,
-    color: colors.warning,
+    color: theme.warning,
     marginTop: 4,
     fontWeight: "500",
   },

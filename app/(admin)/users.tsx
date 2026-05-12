@@ -51,7 +51,6 @@ export default function AdminUsersScreen() {
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false });
 
-    console.log("Data:", data);
     console.log("Error:", error);
     console.log("Count:", count);
     console.log("Data length:", data?.length);
@@ -422,7 +421,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
-    color: "#a8f7f6",
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: "700",
   },
@@ -435,10 +434,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.shadowColorStrong,
   },
   cardInner: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -459,7 +458,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   userName: {
-    color: "#fff",
+    color: colors.textPrimary,
     fontWeight: "600",
     fontSize: 16,
     flex: 1,
@@ -515,7 +514,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.shadowColorStrong,
     maxHeight: "85%",
   },
   modalInner: {

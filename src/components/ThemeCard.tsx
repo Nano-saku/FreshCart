@@ -1,5 +1,5 @@
 import { StyleSheet, View, ViewProps } from "react-native";
-import { colors } from "../constants/colors";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface ThemeCardProps extends ViewProps {
   padding?: number;
@@ -15,6 +15,9 @@ export function ThemeCard({
   bordered = false,
   ...props
 }: ThemeCardProps) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  
   return (
     <View
       style={[
@@ -30,14 +33,14 @@ export function ThemeCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
   card: {
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
     overflow: "hidden",
   },
   elevated: {
-    shadowColor: colors.shadowColor,
+    shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -45,9 +48,9 @@ const styles = StyleSheet.create({
   },
   bordered: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.border,
   },
   inner: {
-    backgroundColor: colors.surface,
+    backgroundColor: theme.surface,
   },
 });

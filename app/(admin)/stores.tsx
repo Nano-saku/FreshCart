@@ -20,6 +20,7 @@ import { ImagePickerButton } from "../../src/components/ImagePickerButton";
 
 export default function AdminStoresScreen() {
   const [stores, setStores] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: "#a8f7f6", fontSize: 24, fontWeight: "700" },
+  title: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
@@ -420,10 +421,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
   cardInner: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     padding: 16,
     flexDirection: "row",
     gap: 14,
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
   row: {
     flexDirection: "row",
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.shadowColor,
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.9)", padding: 24, gap: 2 },
   modalTitle: {
@@ -521,7 +522,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
     alignItems: "center",
   },
   saveBtn: {

@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 8,
   },
-  title: { color: "#a8f7f6", fontSize: 24, fontWeight: "700" },
+  title: { color: colors.textPrimary, fontSize: 24, fontWeight: "700" },
   addBtn: {
     width: 42,
     height: 42,
@@ -339,10 +339,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.border,
   },
   cardInner: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.surface,
   },
   modalInner: { backgroundColor: "rgba(26,74,26,0.85)", padding: 24, gap: 4 },
   modalTitle: {
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.shadowColor,
     alignItems: "center",
   },
   saveBtn: {
