@@ -21,17 +21,17 @@ export default function CustomerLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: theme.border,
           height: 70,
           paddingBottom: 8,
           paddingTop: 8,
           elevation: 8,
-          shadowColor: colors.shadowColorStrong,
+          shadowColor: theme.shadowColorStrong,
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 1,
           shadowRadius: 12,
@@ -49,15 +49,6 @@ export default function CustomerLayout() {
           title: "Home",
           tabBarIcon: ({ color, size }) => (
             <Home size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "Search",
-          tabBarIcon: ({ color, size }) => (
-            <Search size={size || 24} color={color} />
           ),
         }}
       />
@@ -103,6 +94,10 @@ export default function CustomerLayout() {
         options={{ href: null, headerShown: false }}
       />
       <Tabs.Screen
+        name="search"
+        options={{ href: null, headerShown: false }}
+      />
+      <Tabs.Screen
         name="order/[id]"
         options={{ href: null, headerShown: false }}
       />
@@ -119,7 +114,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     position: "absolute",
     top: -8,
     right: -10,
-    backgroundColor: colors.error,
+    backgroundColor: theme.error,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -127,7 +122,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: theme.surface,
   },
   badgeText: {
     color: theme.textInverse,

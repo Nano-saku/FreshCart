@@ -5,8 +5,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "ios": "expo start --ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -25,6 +24,7 @@
     "expo-router": "~55.0.13",
     "expo-secure-store": "~55.0.13",
     "expo-status-bar": "~55.0.5",
+    "expo-updates": "~55.0.21",
     "lucide-react-native": "^1.14.0",
     "nativewind": "^4.2.3",
     "react": "19.2.0",

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   LayoutDashboard,
   Package,
@@ -10,22 +11,23 @@ import {
 import { colors } from "../../src/constants/colors";
 
 export default function SellerLayout() {
+  const { theme } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: theme.surface,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: theme.border,
           height: 70,
           paddingBottom: 8,
           paddingTop: 8,
           elevation: 8,
-          shadowColor: colors.shadowColorStrong,
+          shadowColor: theme.shadowColorStrong,
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 1,
           shadowRadius: 12,
