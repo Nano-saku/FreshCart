@@ -89,15 +89,6 @@ const styles = createStyles(theme);
 
       if (error) throw error;
 
-      // Also update auth.users metadata for consistency
-      const { error: authError } = await supabase.auth.admin.updateUserById(
-        selectedUser.id,
-        { user_metadata: { role: editRole } },
-      );
-
-      if (authError) {
-        console.warn("Auth metadata update failed:", authError);
-      }
 
       Alert.alert("Success", `Role updated to ${editRole}`);
       setModalVisible(false);
