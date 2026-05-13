@@ -13,13 +13,14 @@ interface AuthState {
   loading: boolean;
   biometricEnabled: boolean;
   isLoggingOut: boolean;
+  justSoftLoggedOut: boolean; // flag so login screen knows not to auto-route
   setSession: (session: Session | null) => void;
   setProfile: (profile: any) => void;
   fetchProfile: (userId: string) => Promise<any>;
   signOut: () => Promise<void>;
   softSignOut: () => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
-  checkBiometric: () => Promise<boolean>;
+  restoreSessionFromToken: (refreshToken: string) => Promise<Session | null>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -29,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
   biometricEnabled: false,
   isLoggingOut: false,
+  justSoftLoggedOut: false,
 
   setSession: (session) => {
     set({
@@ -48,7 +50,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .select('*')
         .eq('id', userId)
         .single();
-
       if (error) throw error;
       set({ profile });
       return profile;
@@ -58,26 +59,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // FULL LOGOUT — invalidates the token on Supabase, clears everything
+  // FULL LOGOUT — invalidates token server-side, clears everything
   signOut: async () => {
-    set({ isLoggingOut: true });
+    set({ isLoggingOut: true, justSoftLoggedOut: false });
     try {
       await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
       await SecureStore.deleteItemAsync('biometric_enabled').catch(() => {});
       await SecureStore.deleteItemAsync('biometric_unlocked').catch(() => {});
-
-      // Full sign out invalidates the token server-side — this is intentional
       await supabase.auth.signOut();
-
       set({
         session: null,
         user: null,
         profile: null,
         biometricEnabled: false,
         isLoggingOut: false,
+        justSoftLoggedOut: false,
         loading: false,
       });
-
       router.replace('/(auth)/login');
     } catch (error) {
       console.error('Error during sign out:', error);
@@ -85,50 +83,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // SOFT LOGOUT — does NOT call supabase.auth.signOut()
-  // Calling signOut() invalidates the refresh token server-side,
-  // which would break biometric re-login. Instead, we just clear
-  // the local Supabase session from AsyncStorage manually so the
-  // token stays alive on the server.
+  // SOFT LOGOUT — does NOT invalidate the token server-side
+  // We wipe AsyncStorage LAST so any in-flight session writes are cleared too
   softSignOut: async () => {
-    set({ isLoggingOut: true });
+    set({ isLoggingOut: true, justSoftLoggedOut: true });
     try {
-      // Save the refresh token BEFORE wiping AsyncStorage
+      // Snapshot credentials before any wipe
       const refreshToken = await SecureStore.getItemAsync('refresh_token');
-      const biometricEnabled = await SecureStore.getItemAsync('biometric_enabled');
+      const biometricFlag = await SecureStore.getItemAsync('biometric_enabled');
 
-      // Clear only Supabase's own session keys from AsyncStorage
-      // This makes the app "forget" the session without invalidating it server-side
-      const keys = await AsyncStorage.getAllKeys();
-      const supabaseKeys = keys.filter(k => k.startsWith('supabase'));
-      if (supabaseKeys.length > 0) {
-        await AsyncStorage.multiRemove(supabaseKeys);
-      }
-
-      // Restore our saved credentials — they must survive the wipe
-      if (refreshToken) {
-        await SecureStore.setItemAsync('refresh_token', refreshToken);
-      }
-      if (biometricEnabled) {
-        await SecureStore.setItemAsync('biometric_enabled', biometricEnabled);
-      }
-
-      // Clear only the unlocked flag
-      await SecureStore.deleteItemAsync('biometric_unlocked').catch(() => {});
-
+      // Clear state first so no component tries to use the session
       set({
         session: null,
         user: null,
         profile: null,
         isLoggingOut: false,
         loading: false,
-        // biometricEnabled state stays as-is
+        // justSoftLoggedOut stays true — login screen reads this
       });
 
+      // Navigate first so the login screen mounts BEFORE we wipe AsyncStorage.
+      // This prevents the login screen's getSession() from seeing a stale session.
       router.replace('/(auth)/login');
+
+      // Small delay to let the navigation settle and login screen to mount
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // NOW wipe Supabase's AsyncStorage keys — any session restoreSessionFromToken
+      // wrote is cleared here, so getSession() on the login screen returns null
+      const allKeys = await AsyncStorage.getAllKeys();
+      const supabaseKeys = allKeys.filter(k => k.startsWith('supabase'));
+      if (supabaseKeys.length > 0) {
+        await AsyncStorage.multiRemove(supabaseKeys);
+      }
+
+      // Restore biometric credentials after the wipe
+      if (refreshToken) await SecureStore.setItemAsync('refresh_token', refreshToken);
+      if (biometricFlag) await SecureStore.setItemAsync('biometric_enabled', biometricFlag);
+      await SecureStore.deleteItemAsync('biometric_unlocked').catch(() => {});
+
     } catch (error) {
       console.error('Error during soft sign out:', error);
-      set({ isLoggingOut: false, loading: false });
+      set({ isLoggingOut: false, justSoftLoggedOut: false, loading: false });
     }
   },
 
@@ -137,7 +133,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (enabled) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.refresh_token) throw new Error('No active session to save');
-
         await SecureStore.setItemAsync('biometric_enabled', 'true');
         await SecureStore.setItemAsync('refresh_token', session.refresh_token);
         set({ biometricEnabled: true });
@@ -152,69 +147,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  checkBiometric: async (): Promise<boolean> => {
+  restoreSessionFromToken: async (refreshToken: string): Promise<Session | null> => {
     try {
-      if (get().isLoggingOut) return false;
-
-      const savedBiometric = await SecureStore.getItemAsync('biometric_enabled');
-      if (savedBiometric !== 'true') return false;
-
-      const refreshToken = await SecureStore.getItemAsync('refresh_token');
-      if (!refreshToken) {
-        console.log('[Biometric] No refresh token found');
-        return false;
-      }
-
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!compatible || !enrolled) return false;
-
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to continue',
-        fallbackLabel: 'Use passcode',
-        disableDeviceFallback: false,
-      });
-
-      if (!result.success) return false;
-
-      const { data, error } = await supabase.auth.setSession({
-        access_token: '',
-        refresh_token: refreshToken,
-      });
+      const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
 
       if (error) {
-        console.log('[Biometric] Session restore failed:', error.message);
+        console.log('[Auth] refreshSession failed:', error.message);
         if (
           error.message.includes('Invalid Refresh Token') ||
-          error.message.includes('Refresh Token Not Found')
+          error.message.includes('Refresh Token Not Found') ||
+          error.message.includes('Token has been revoked') ||
+          error.status === 400
         ) {
           await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-          await SecureStore.setItemAsync('biometric_enabled', 'false');
+          await SecureStore.setItemAsync('biometric_enabled', 'false').catch(() => {});
           set({ biometricEnabled: false });
         }
-        return false;
+        return null;
       }
 
-      if (!data.session) return false;
+      if (!data.session) return null;
 
-      // Save the new refresh token Supabase issued after rotation
+      // Save the rotated token
       await SecureStore.setItemAsync('refresh_token', data.session.refresh_token);
 
       set({
         session: data.session,
         user: data.session.user,
         biometricEnabled: true,
+        justSoftLoggedOut: false, // clear the flag on successful login
         loading: false,
       });
 
       await get().fetchProfile(data.session.user.id);
-      return true;
+      return data.session;
     } catch (error) {
-      console.error('[Biometric] Unexpected error:', error);
-      await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-      await SecureStore.setItemAsync('biometric_enabled', 'false').catch(() => {});
-      set({ biometricEnabled: false });
-      return false;
+      console.error('[Auth] restoreSessionFromToken error:', error);
+      return null;
     }
   },
 }));

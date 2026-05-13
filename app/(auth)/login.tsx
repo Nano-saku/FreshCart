@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { supabase } from "../../src/lib/supabase";
+import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, Lock, Fingerprint, ArrowRight } from "lucide-react-native";
 
@@ -23,13 +24,14 @@ const BIOMETRIC_UNLOCKED_KEY = "biometric_unlocked";
 
 export default function LoginScreen() {
   const { theme } = useTheme();
+  const { restoreSessionFromToken, justSoftLoggedOut } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const didAutoTrigger = useRef(false); // Prevent double-trigger on re-renders
+  const didAutoTrigger = useRef(false);
 
   useEffect(() => {
     initializeAuth();
@@ -42,25 +44,33 @@ export default function LoginScreen() {
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      const biometricEnabledValue = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
-      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      const biometricFlag = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+      const refreshToken = await SecureStore.getItemAsync("refresh_token");
 
       setBiometricAvailable(hasHardware && isEnrolled);
-      setBiometricEnabled(biometricEnabledValue === "true");
+      setBiometricEnabled(biometricFlag === "true");
 
-      // Check if there's already an active Supabase session (e.g. fresh app open, not soft logout)
+      // CRITICAL: If we just soft-logged out, skip the getSession() check entirely.
+      // softSignOut wipes AsyncStorage after navigating here, so getSession() might
+      // still return a stale session during the brief window before the wipe completes.
+      if (justSoftLoggedOut) {
+        setCheckingSession(false);
+        // Still auto-trigger biometric if available
+        if (refreshToken && biometricFlag === "true" && hasHardware && isEnrolled) {
+          await attemptBiometricRestore(refreshToken);
+        }
+        return;
+      }
+
+      // Normal app open — check for an active local session
       const { data: { session: existingSession } } = await supabase.auth.getSession();
-
       if (existingSession) {
-        // Already logged in — route directly, no biometric needed
         await fetchProfileAndRoute(existingSession.user);
         return;
       }
 
-      // No active session — check if we have a saved token for biometric login
-      if (refreshToken && biometricEnabledValue === "true" && hasHardware && isEnrolled) {
-        // We have a token. Show the login screen first, THEN auto-prompt biometric
-        // so the user sees context before the system dialog appears
+      // No active session — auto-trigger biometric if available
+      if (refreshToken && biometricFlag === "true" && hasHardware && isEnrolled) {
         setCheckingSession(false);
         await attemptBiometricRestore(refreshToken);
         return;
@@ -68,7 +78,7 @@ export default function LoginScreen() {
 
       setCheckingSession(false);
     } catch (err) {
-      console.error('[Init] Error:', err);
+      console.error("[Login] Init error:", err);
       setCheckingSession(false);
     }
   };
@@ -81,43 +91,23 @@ export default function LoginScreen() {
         disableDeviceFallback: false,
       });
 
-      if (!result.success) {
-        // User cancelled or failed — just show login form, do NOT clear session or token
-        // The token is still valid, they can tap the biometric button to try again
-        return;
-      }
+      if (!result.success) return; // cancelled — form stays visible, button still there
 
       setLoading(true);
 
-      const { data, error } = await supabase.auth.setSession({
-        access_token: '',
-        refresh_token: refreshToken,
-      });
+      const session = await restoreSessionFromToken(refreshToken);
 
-      if (error) {
+      if (!session) {
         setLoading(false);
-        if (
-          error.message.includes('Invalid Refresh Token') ||
-          error.message.includes('Refresh Token Not Found')
-        ) {
-          await SecureStore.deleteItemAsync('refresh_token');
-          await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'false');
-          setBiometricEnabled(false);
-          Alert.alert("Session Expired", "Please sign in with your email and password.");
-        }
+        setBiometricEnabled(false);
+        Alert.alert("Session Expired", "Please sign in with your email and password.");
         return;
       }
 
-      if (data.session) {
-        // Rotate: save new refresh token issued by Supabase
-        await SecureStore.setItemAsync('refresh_token', data.session.refresh_token);
-        await SecureStore.setItemAsync(BIOMETRIC_UNLOCKED_KEY, "true");
-        await fetchProfileAndRoute(data.session.user);
-      } else {
-        setLoading(false);
-      }
+      await SecureStore.setItemAsync(BIOMETRIC_UNLOCKED_KEY, "true");
+      await fetchProfileAndRoute(session.user);
     } catch (err) {
-      console.error('[Biometric Restore] Error:', err);
+      console.error("[Biometric] Restore error:", err);
       setLoading(false);
     }
   };
@@ -126,19 +116,16 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
       if (error) {
         setLoading(false);
         Alert.alert("Login failed", error.message);
         return;
       }
-
       if (!data.session || !data.user) {
         setLoading(false);
         Alert.alert("Error", "No session created");
         return;
       }
-
       await fetchProfileAndRoute(data.user);
     } catch (err) {
       setLoading(false);
@@ -147,16 +134,11 @@ export default function LoginScreen() {
   };
 
   const handleBiometricLogin = async () => {
-    const refreshToken = await SecureStore.getItemAsync('refresh_token');
-
+    const refreshToken = await SecureStore.getItemAsync("refresh_token");
     if (!refreshToken) {
-      Alert.alert(
-        "Biometric Login Unavailable",
-        "Please sign in with your email and password first."
-      );
+      Alert.alert("Biometric Login Unavailable", "Please sign in with your email and password first.");
       return;
     }
-
     await attemptBiometricRestore(refreshToken);
   };
 
@@ -166,7 +148,6 @@ export default function LoginScreen() {
       Alert.alert("Error", "User not found");
       return;
     }
-
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role, full_name, email_verified")
@@ -178,13 +159,11 @@ export default function LoginScreen() {
       Alert.alert("Error", "Profile not found. Please register again.");
       return;
     }
-
     if (!profile.email_verified) {
       setLoading(false);
       Alert.alert("Email not verified", "Please verify your email first.");
       return;
     }
-
     setLoading(false);
     routeByRole(profile.role);
   };
@@ -211,7 +190,6 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={[styles.logoCircle, { backgroundColor: theme.primary + "15" }]}>
             <Text style={styles.logoEmoji}>🥬</Text>
@@ -222,12 +200,10 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        {/* Form Card */}
         <View style={[styles.card, { backgroundColor: theme.surface, shadowColor: theme.shadowColor }]}>
           <Text style={[styles.welcomeText, { color: theme.textPrimary }]}>Welcome back!</Text>
           <Text style={[styles.welcomeSub, { color: theme.textSecondary }]}>Sign in to continue</Text>
 
-          {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>Email</Text>
             <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -244,7 +220,6 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Password */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>Password</Text>
             <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -261,23 +236,16 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Biometric button — shown when enabled, lets user re-trigger if they cancelled */}
           {biometricEnabled && biometricAvailable && (
             <TouchableOpacity
               onPress={handleBiometricLogin}
-              style={[
-                styles.biometricBtn,
-                { borderColor: theme.primary + "30", backgroundColor: theme.primary + "10" },
-              ]}
+              style={[styles.biometricBtn, { borderColor: theme.primary + "30", backgroundColor: theme.primary + "10" }]}
             >
               <Fingerprint size={20} color={theme.primary} />
-              <Text style={[styles.biometricText, { color: theme.primary }]}>
-                Log in with Fingerprint
-              </Text>
+              <Text style={[styles.biometricText, { color: theme.primary }]}>Log in with Fingerprint</Text>
             </TouchableOpacity>
           )}
 
-          {/* Sign In Button */}
           <TouchableOpacity
             onPress={handleManualLogin}
             disabled={loading || !email || !password}
@@ -298,7 +266,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Register Link */}
         <TouchableOpacity onPress={() => router.replace("/register")} style={styles.link}>
           <Text style={[styles.linkText, { color: theme.textSecondary }]}>
             Don't have an account?{" "}
@@ -307,8 +274,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.replace("/(customer)")} style={styles.link}>
           <Text style={[styles.linkText, { color: theme.textSecondary }]}>
-            Preview as{" "}
-            <Text style={[styles.linkHighlight, { color: theme.primary }]}>Guest</Text>
+            Preview as <Text style={[styles.linkHighlight, { color: theme.primary }]}>Guest</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
