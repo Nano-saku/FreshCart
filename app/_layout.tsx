@@ -24,7 +24,7 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { theme } = useTheme();
-  const { setSession, setProfile, fetchProfile } = useAuthStore();
+  const { setSession, setProfile, fetchProfile, isLoggingOut } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,9 +39,14 @@ function RootLayoutNav() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[Auth] State change:', _event, session ? 'session exists' : 'no session');
       setSession(session);
+      
       if (session?.user) {
         fetchProfile(session.user.id);
+      } else if (_event === 'SIGNED_OUT') {
+        // On sign out, the authStore handles navigation
+        console.log('[Auth] User signed out');
       }
     });
 
@@ -49,17 +54,18 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || isLoggingOut) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inSellerGroup = segments[0] === "(seller)";
     const inAdminGroup = segments[0] === "(admin)";
+    const inCustomerGroup = segments[0] === "(customer)";
 
     const { user } = useAuthStore.getState();
 
-    // Protect seller/admin routes
+    // Protect seller/admin routes - redirect to customer landing if no user
     if ((inSellerGroup || inAdminGroup) && !user) {
-      router.replace("/(auth)/login");
+      router.replace("/(customer)");
       return;
     }
 
@@ -67,7 +73,7 @@ function RootLayoutNav() {
     if (inAuthGroup && user) {
       routeToRole(user);
     }
-  }, [loading, segments]);
+  }, [loading, segments, isLoggingOut]);
 
   const routeToRole = async (user: any) => {
     const { data: profile } = await supabase
@@ -93,10 +99,9 @@ function RootLayoutNav() {
     <>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
-        {/* Remove the invalid "(auth)" group name - list individual screens or use a layout */}
+        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
-        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
         <Stack.Screen name="(seller)" options={{ headerShown: false }} />
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
       </Stack>
