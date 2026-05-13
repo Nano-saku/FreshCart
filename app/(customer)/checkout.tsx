@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useCartStore } from "../../src/stores/cartStore";
-import { colors } from "../../src/constants/colors";
+import { useAuthStore } from "../../src/stores/authStore";
 import { router } from "expo-router";
 import {
   ChevronLeft,
@@ -23,8 +23,19 @@ import {
   CreditCard,
   Truck,
   CheckCircle2,
+  Phone,
 } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+
+type PaymentMethod = "cash_on_delivery" | "bank_transfer";
+
+interface SavedAddress {
+  id: string;
+  label: string;
+  full_address: string;
+  phone: string | null;
+  is_default: boolean;
+}
 
 const SHIPPING_METHODS = [
   { id: "standard", name: "Standard", price: 5.0, time: "3-5 business days" },
@@ -39,33 +50,56 @@ const SHIPPING_METHODS = [
 
 export default function CheckoutScreen() {
   const { items, total, clearCart } = useCartStore();
+  const { user } = useAuthStore();
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedShipping, setSelectedShipping] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: shipping, 2: address, 3: payment, 4: success
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash_on_delivery");
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const shipping = SHIPPING_METHODS.find((s) => s.id === selectedShipping);
   const deliveryFee = shipping?.price || 5.0;
   const grandTotal = total() + deliveryFee;
 
+  // Fetch saved addresses when stepping into step 2
+  useEffect(() => {
+    if (step !== 2 || !user) return;
+    supabase
+      .from("delivery_addresses")
+      .select("id, label, full_address, phone, is_default")
+      .eq("customer_id", user.id)
+      .order("is_default", { ascending: false })
+      .then(({ data }) => {
+        const list = data || [];
+        setSavedAddresses(list);
+        // Auto-select default if address not yet chosen
+        if (!address && list.length > 0) {
+          const def = list.find((a) => a.is_default) || list[0];
+          setSelectedAddressId(def.id);
+          setAddress(def.full_address);
+          setShowManualInput(false);
+        } else if (!address) {
+          setShowManualInput(true);
+        }
+      });
+  }, [step, user]);
+
   const handleOrder = async () => {
     if (!address.trim())
       return Alert.alert("Error", "Please enter your delivery address");
     if (items.length === 0) return Alert.alert("Error", "Your cart is empty");
+    if (!user) {
+      Alert.alert("Error", "Please sign in to place an order");
+      return;
+    }
 
     setLoading(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert("Error", "Please sign in to place an order");
-        setLoading(false);
-        return;
-      }
-
       const storeId = items[0]?.store_product_id;
       const { data: storeProduct } = await supabase
         .from("store_products")
@@ -83,6 +117,7 @@ export default function CheckoutScreen() {
           status: "pending",
           total_amount: grandTotal,
           delivery_address: address.trim(),
+          payment_method: paymentMethod,
           notes: notes.trim() || null,
         })
         .select()
@@ -104,13 +139,11 @@ export default function CheckoutScreen() {
         })),
       );
 
-      if (itemsError) {
-        console.error("Order items error:", itemsError);
-      }
+      if (itemsError) console.error("Order items error:", itemsError);
 
       await clearCart();
       setLoading(false);
-      setStep(4); // Show success
+      setStep(4);
     } catch (err) {
       console.error("Checkout error:", err);
       Alert.alert("Error", "Something went wrong. Please try again.");
@@ -267,29 +300,93 @@ export default function CheckoutScreen() {
           {step === 2 && (
             <>
               <Text style={styles.sectionLabel}>Delivery Address</Text>
-              <View style={styles.inputCard}>
-                <View style={styles.inputHeader}>
-                  <MapPin size={18} color={theme.primary} />
-                  <Text style={styles.inputTitle}>Enter your address</Text>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Full delivery address"
-                  placeholderTextColor={theme.textMuted}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
+
+              {/* Saved address cards */}
+              {savedAddresses.length > 0 && !showManualInput && (
+                <>
+                  {savedAddresses.map((addr) => {
+                    const active = selectedAddressId === addr.id;
+                    return (
+                      <TouchableOpacity
+                        key={addr.id}
+                        style={[
+                          styles.savedAddrCard,
+                          active && { borderColor: theme.primary, backgroundColor: theme.primary + "06" },
+                        ]}
+                        onPress={() => {
+                          setSelectedAddressId(addr.id);
+                          setAddress(addr.full_address);
+                        }}
+                      >
+                        <View style={styles.savedAddrRow}>
+                          <View style={[styles.savedAddrChip, { backgroundColor: theme.primary + "12" }]}>
+                            <MapPin size={12} color={theme.primary} />
+                            <Text style={[styles.savedAddrLabel, { color: theme.primary }]}>{addr.label}</Text>
+                          </View>
+                          {addr.is_default && (
+                            <View style={[styles.defaultBadge, { backgroundColor: theme.primary }]}>
+                              <Text style={styles.defaultBadgeText}>Default</Text>
+                            </View>
+                          )}
+                          <View style={[styles.radio, active && { borderColor: theme.primary }]}>
+                            {active && <View style={[styles.radioFill, { backgroundColor: theme.primary }]} />}
+                          </View>
+                        </View>
+                        <Text style={[styles.savedAddrText, { color: theme.textPrimary }]} numberOfLines={2}>
+                          {addr.full_address}
+                        </Text>
+                        {addr.phone ? (
+                          <View style={styles.savedAddrPhone}>
+                            <Phone size={12} color={theme.textMuted} />
+                            <Text style={[styles.savedAddrPhoneText, { color: theme.textSecondary }]}>{addr.phone}</Text>
+                          </View>
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <TouchableOpacity
+                    style={styles.enterDiffBtn}
+                    onPress={() => { setSelectedAddressId(null); setAddress(""); setShowManualInput(true); }}
+                  >
+                    <Text style={[styles.enterDiffText, { color: theme.primary }]}>+ Enter a different address</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* Manual input — shown when no saved addresses, or user opts in */}
+              {(savedAddresses.length === 0 || showManualInput) && (
+                <>
+                  {savedAddresses.length > 0 && (
+                    <TouchableOpacity
+                      style={styles.enterDiffBtn}
+                      onPress={() => { setShowManualInput(false); const def = savedAddresses.find((a) => a.is_default) || savedAddresses[0]; setSelectedAddressId(def.id); setAddress(def.full_address); }}
+                    >
+                      <Text style={[styles.enterDiffText, { color: theme.primary }]}>← Use a saved address</Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={styles.inputCard}>
+                    <View style={styles.inputHeader}>
+                      <MapPin size={18} color={theme.primary} />
+                      <Text style={styles.inputTitle}>Enter your address</Text>
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      value={address}
+                      onChangeText={setAddress}
+                      placeholder="House no., Street, Barangay, City"
+                      placeholderTextColor={theme.textMuted}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                </>
+              )}
 
               <View style={styles.inputCard}>
                 <View style={styles.inputHeader}>
                   <FileText size={18} color={theme.primary} />
-                  <Text style={styles.inputTitle}>
-                    Special notes (optional)
-                  </Text>
+                  <Text style={styles.inputTitle}>Special notes (optional)</Text>
                 </View>
                 <TextInput
                   style={styles.input}
@@ -304,16 +401,10 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <TouchableOpacity
-                  style={styles.secondaryBtn}
-                  onPress={() => setStep(1)}
-                >
+                <TouchableOpacity style={styles.secondaryBtn} onPress={() => setStep(1)}>
                   <Text style={styles.secondaryBtnText}>Back</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.primaryBtn}
-                  onPress={() => setStep(3)}
-                >
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(3)}>
                   <Text style={styles.primaryBtnText}>Next</Text>
                 </TouchableOpacity>
               </View>
@@ -324,23 +415,36 @@ export default function CheckoutScreen() {
           {step === 3 && (
             <>
               <Text style={styles.sectionLabel}>Payment Method</Text>
-              <View style={styles.paymentCard}>
+              {/* Cash on Delivery */}
+              <TouchableOpacity
+                style={[styles.paymentCard, paymentMethod === "cash_on_delivery" && { borderColor: theme.primary, borderWidth: 2 }]}
+                onPress={() => setPaymentMethod("cash_on_delivery")}
+                activeOpacity={0.8}
+              >
                 <View style={styles.paymentOption}>
-                  <View
-                    style={[
-                      styles.paymentIcon,
-                      { backgroundColor: theme.primary + "10" },
-                    ]}
-                  >
+                  <View style={[styles.paymentIcon, { backgroundColor: theme.primary + "10" }]}>
                     <CreditCard size={22} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.paymentTitle}>Cash on Delivery</Text>
                     <Text style={styles.paymentSub}>Pay when you receive</Text>
                   </View>
-                  <View style={styles.radioActive}>
-                    <View style={styles.radioInner} />
+                  <View style={[styles.radioActive, paymentMethod === "cash_on_delivery" && { borderColor: theme.primary }]}>
+                    {paymentMethod === "cash_on_delivery" && <View style={styles.radioInner} />}
                   </View>
+                </View>
+              </TouchableOpacity>
+              {/* Bank/E-bank — Coming Soon */}
+              <View style={[styles.paymentCard, { opacity: 0.45 }]}>
+                <View style={styles.paymentOption}>
+                  <View style={[styles.paymentIcon, { backgroundColor: theme.textMuted + "15" }]}>
+                    <CreditCard size={22} color={theme.textMuted} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.paymentTitle, { color: theme.textMuted }]}>Bank / E-Wallet</Text>
+                    <Text style={styles.paymentSub}>Coming soon</Text>
+                  </View>
+                  <View style={[styles.radioActive, { borderColor: theme.border }]} />
                 </View>
               </View>
 
@@ -729,4 +833,59 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     textAlign: "center",
     marginBottom: 24,
   },
+  // ── Saved address picker (step 2) ───────────────────────────────────────
+  savedAddrCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
+    padding: 14,
+    marginBottom: 10,
+  },
+  savedAddrRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  savedAddrChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  savedAddrLabel: { fontSize: 11, fontWeight: "700" },
+  defaultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  defaultBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  radio: {
+    marginLeft: "auto",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: theme.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioFill: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  savedAddrText: { fontSize: 13, lineHeight: 20, fontWeight: "500" },
+  savedAddrPhone: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6,
+  },
+  savedAddrPhoneText: { fontSize: 12 },
+  enterDiffBtn: { paddingVertical: 10, alignItems: "center", marginBottom: 8 },
+  enterDiffText: { fontSize: 13, fontWeight: "600" },
 });

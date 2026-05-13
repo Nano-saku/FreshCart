@@ -9,8 +9,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { useState, useEffect } from "react";
+import { router } from "expo-router";
 import { useAuthStore } from "../stores/authStore";
-import { AppScreen } from "../../src/components/AppScreen";
+import { AppScreen } from "./AppScreen";
 import { useTheme } from "../contexts/ThemeContext";
 import {
   LogOut,
@@ -109,10 +110,30 @@ export default function ProfileScreen() {
   const styles = createStyles(theme);
 
   const menuItems = [
-    { icon: MapPin, label: "Delivery Addresses", color: theme.textPrimary },
-    { icon: CreditCard, label: "Payment Methods", color: theme.textPrimary },
-    { icon: Bell, label: "Notifications", color: theme.textPrimary },
-    { icon: Settings, label: "Settings", color: theme.textPrimary },
+    {
+      icon: MapPin,
+      label: "Delivery Addresses",
+      color: theme.textPrimary,
+      onPress: () => router.push("/(customer)/profile/addresses"),
+    },
+    {
+      icon: CreditCard,
+      label: "Payment Methods",
+      color: theme.textPrimary,
+      onPress: () => Alert.alert("Coming Soon", "Payment methods will be available in the next update."),
+    },
+    {
+      icon: Bell,
+      label: "Notifications",
+      color: theme.textPrimary,
+      onPress: () => Alert.alert("Coming Soon", "Notification settings will be available soon."),
+    },
+    {
+      icon: Settings,
+      label: "Settings",
+      color: theme.textPrimary,
+      onPress: () => Alert.alert("Coming Soon", "App settings will be available soon."),
+    },
   ];
 
   return (
@@ -150,6 +171,7 @@ export default function ProfileScreen() {
               key={index}
               style={styles.menuItem}
               activeOpacity={0.7}
+              onPress={item.onPress}
             >
               <View
                 style={[

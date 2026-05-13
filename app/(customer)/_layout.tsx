@@ -79,32 +79,16 @@ export default function CustomerLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <User size={size || 24} color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, size }) => (<User size={size || 24} color={color} />) }} />
       {/* Hidden screens */}
-      <Tabs.Screen
-        name="checkout"
-        options={{ href: null, headerShown: false }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{ href: null, headerShown: false }}
-      />
-      <Tabs.Screen
-        name="order/[id]"
-        options={{ href: null, headerShown: false }}
-      />
-      <Tabs.Screen
-        name="product/[id]"
-        options={{ href: null, headerShown: false }}
-      />
+      <Tabs.Screen name="checkout" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="search" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="order/[id]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="product/[id]" options={{ href: null, headerShown: false }} />
+      {/* Hidden profile sub-screens */}
+      <Tabs.Screen name="profile/addresses" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="profile/notifications" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="profile/settings" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 }

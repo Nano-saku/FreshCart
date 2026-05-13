@@ -1,6 +1,11 @@
 -- =====================================================
--- FRESHCART COMPLETE SCHEMA (v2.1 - Auth-Only Checkout)
+-- FRESHCART COMPLETE SCHEMA (v2.2 - Profile Features)
 -- =====================================================
+-- Changes from v2.1:
+--   - Added delivery_addresses table (multi-address support)
+--   - Added orders.payment_method column (cash_on_delivery / bank_transfer / ebank)
+--   - Added profiles.notification_prefs JSONB column
+--   - Added RLS, trigger, and index for delivery_addresses
 -- Changes from v2.0:
 --   - Removed guest checkout fields (is_guest, guest_name, guest_email, guest_phone)
 --   - Removed guest RLS policies
@@ -92,6 +97,7 @@ drop trigger if exists update_categories_updated_at on public.categories;
 drop trigger if exists update_order_items_updated_at on public.order_items;
 drop trigger if exists update_cart_items_updated_at on public.cart_items;
 drop trigger if exists update_reviews_updated_at on public.reviews;
+drop trigger if exists update_delivery_addresses_updated_at on public.delivery_addresses;
 drop trigger if exists trg_recalc_order_total on public.order_items;
 drop trigger if exists trg_log_order_status on public.orders;
 drop trigger if exists on_profile_role_updated on public.profiles;
@@ -106,6 +112,7 @@ drop table if exists public.order_status_history cascade;
 drop table if exists public.order_items cascade;
 drop table if exists public.orders cascade;
 drop table if exists public.cart_items cascade;
+drop table if exists public.delivery_addresses cascade;
 drop table if exists public.reviews cascade;
 drop table if exists public.store_products cascade;
 drop table if exists public.products cascade;
@@ -140,6 +147,7 @@ create table public.profiles (
   role text default 'customer' check (role in ('customer', 'admin', 'seller')),
   avatar_url text,
   email_verified boolean default false,
+  notification_prefs jsonb not null default '{"order_updates": true, "promotions": false}'::jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -195,6 +203,8 @@ create table public.orders (
   status text default 'pending' check (status in ('pending','confirmed','preparing','out_for_delivery','delivered','cancelled')),
   total_amount numeric(10,2),
   delivery_address text,
+  payment_method text not null default 'cash_on_delivery'
+    check (payment_method in ('cash_on_delivery', 'bank_transfer', 'ebank')),
   notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -215,6 +225,18 @@ create table public.cart_items (
   quantity int default 1,
   unique(customer_id, store_product_id),
   created_at timestamptz default now()
+);
+
+create table public.delivery_addresses (
+  id           uuid primary key default gen_random_uuid(),
+  customer_id  uuid references public.profiles(id) on delete cascade not null,
+  label        text not null default 'Home'
+                 check (label in ('Home', 'Work', 'Other')),
+  full_address text not null,
+  phone        text,
+  is_default   boolean not null default false,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
 );
 
 create table public.reviews (
@@ -263,6 +285,7 @@ alter table public.reviews enable row level security;
 alter table public.categories enable row level security;
 alter table public.verification_codes enable row level security;
 alter table public.order_status_history enable row level security;
+alter table public.delivery_addresses enable row level security;
 
 -- =====================================================
 -- STEP 4: CREATE FUNCTIONS
@@ -508,6 +531,10 @@ create trigger on_profile_role_updated
   after update of role on public.profiles
   for each row execute procedure public.sync_user_role_to_metadata();
 
+create trigger update_delivery_addresses_updated_at
+  before update on public.delivery_addresses
+  for each row execute procedure public.update_updated_at_column();
+
 -- =====================================================
 -- STEP 6: CREATE RLS POLICIES (RECURSION-FREE)
 -- =====================================================
@@ -728,6 +755,13 @@ create policy "own cart only"
   using (customer_id = auth.uid())
   with check (customer_id = auth.uid());
 
+-- DELIVERY_ADDRESSES
+create policy "own delivery addresses"
+  on public.delivery_addresses for all
+  to authenticated
+  using (customer_id = auth.uid())
+  with check (customer_id = auth.uid());
+
 -- REVIEWS
 create policy "reviews public read"
   on public.reviews for select
@@ -788,6 +822,11 @@ create index idx_reviews_product_rating on public.reviews(product_id, rating);
 create index idx_reviews_store on public.reviews(store_id);
 create index idx_reviews_store_product on public.reviews(store_product_id);
 create index idx_order_status_history_order on public.order_status_history(order_id, changed_at);
+create index idx_delivery_addresses_customer on public.delivery_addresses(customer_id);
+-- One default address per customer enforced by partial unique index
+create unique index idx_delivery_addresses_one_default
+  on public.delivery_addresses (customer_id)
+  where is_default = true;
 
 -- Full text search index on product names
 create extension if not exists pg_trgm;
@@ -908,5 +947,5 @@ end $$;
 -- alter publication supabase_realtime add table public.order_status_history;
 
 -- =====================================================
--- END OF COMPLETE SCHEMA
+-- END OF COMPLETE SCHEMA (v2.2)
 -- =====================================================
