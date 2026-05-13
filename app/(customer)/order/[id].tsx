@@ -40,7 +40,7 @@ export default function OrderTrackingScreen() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          `*, store:stores(name, phone, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
+          `*, store:stores(name, address), order_items(*, store_product:store_products(price, product:products(name, unit, image_url)))`,
         )
         .eq("id", id)
         .single();
