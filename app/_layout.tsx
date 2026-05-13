@@ -24,29 +24,33 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { theme } = useTheme();
-  const { setSession, setProfile, fetchProfile, isLoggingOut } = useAuthStore();
+  const { setSession, fetchProfile } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check initial session
+    // Check initial session on app start
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setSession(session);
         fetchProfile(session.user.id);
+      } else {
+        setSession(null);
       }
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth state changes from Supabase.
+    // IMPORTANT: We only update the store here — navigation is handled by:
+    //   • authStore signOut/softSignOut (explicit logouts)
+    //   • login.tsx (after successful login/biometric restore)
+    //   • the segment guard below (protecting seller/admin routes)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[Auth] State change:', _event, session ? 'session exists' : 'no session');
-      setSession(session);
-      
+      // Only sync store on real new sessions (e.g. login from another device/tab)
+      // Do NOT navigate from here — it races with login.tsx and authStore routing.
+      // Do NOT call setSession(null) on SIGNED_OUT — authStore already clears the store.
       if (session?.user) {
+        setSession(session);
         fetchProfile(session.user.id);
-      } else if (_event === 'SIGNED_OUT') {
-        // On sign out, the authStore handles navigation
-        console.log('[Auth] User signed out');
       }
     });
 
@@ -54,26 +58,27 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (loading || isLoggingOut) return;
+    if (loading) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
     const inSellerGroup = segments[0] === "(seller)";
     const inAdminGroup = segments[0] === "(admin)";
-    const inCustomerGroup = segments[0] === "(customer)";
+    const inAuthGroup = segments[0] === "(auth)";
 
     const { user } = useAuthStore.getState();
 
-    // Protect seller/admin routes - redirect to customer landing if no user
+    // Only hard-redirect for protected routes with no user
     if ((inSellerGroup || inAdminGroup) && !user) {
-      router.replace("/(customer)");
+      router.replace("/(auth)/login");
       return;
     }
 
-    // If logged in and on auth page, go to appropriate home
+    // If somehow on auth screen with an active user (e.g. deep link), route them home
     if (inAuthGroup && user) {
       routeToRole(user);
     }
-  }, [loading, segments, isLoggingOut]);
+
+    // Customer route is public — no redirect when there's no user
+  }, [loading, segments]);
 
   const routeToRole = async (user: any) => {
     const { data: profile } = await supabase
