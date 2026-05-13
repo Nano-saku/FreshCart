@@ -29,14 +29,19 @@ function RootLayoutNav() {
 
   useEffect(() => {
     // Check initial session on app start
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         setSession(session);
-        fetchProfile(session.user.id);
+        const profile = await fetchProfile(session.user.id); // await so role is ready before routing
+        setLoading(false);
+        // Route to the correct dashboard immediately on startup
+        if (profile?.role === "admin")        router.replace("/(admin)");
+        else if (profile?.role === "seller")  router.replace("/(seller)");
+        // customers: already on (customer) by default — no redirect needed
       } else {
         setSession(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     // Listen for auth state changes from Supabase.
@@ -61,35 +66,30 @@ function RootLayoutNav() {
     if (loading) return;
 
     const inSellerGroup = segments[0] === "(seller)";
-    const inAdminGroup = segments[0] === "(admin)";
-    const inAuthGroup = segments[0] === "(auth)";
+    const inAdminGroup  = segments[0] === "(admin)";
+    const inAuthGroup   = segments[0] === "(auth)";
 
-    const { user } = useAuthStore.getState();
+    const { user, profile } = useAuthStore.getState();
 
-    // Only hard-redirect for protected routes with no user
+    // Protected routes with no user → send to login
     if ((inSellerGroup || inAdminGroup) && !user) {
       router.replace("/(auth)/login");
       return;
     }
 
-    // If somehow on auth screen with an active user (e.g. deep link), route them home
-    if (inAuthGroup && user) {
-      routeToRole(user);
+    // Auth screen with an active user (e.g. deep link) → route to their dashboard
+    if (inAuthGroup && user && profile) {
+      routeByRole(profile.role);
     }
 
     // Customer route is public — no redirect when there's no user
   }, [loading, segments]);
 
-  const routeToRole = async (user: any) => {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role === "seller") router.replace("/(seller)");
-    else if (profile?.role === "admin") router.replace("/(admin)");
-    else router.replace("/(customer)");
+  // Sync, no network call — uses the role already stored in authStore
+  const routeByRole = (role: string) => {
+    if (role === "seller")      router.replace("/(seller)");
+    else if (role === "admin")  router.replace("/(admin)");
+    else                        router.replace("/(customer)");
   };
 
   if (loading) {

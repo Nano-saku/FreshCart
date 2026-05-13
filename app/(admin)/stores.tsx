@@ -58,19 +58,6 @@ export default function AdminStoresScreen() {
     fetchStores();
   }, []);
 
-  const openAdd = () => {
-    setEditStore(null);
-    setForm({
-      name: "",
-      description: "",
-      address: "",
-      latitude: "",
-      longitude: "",
-      logo_url: "",
-      is_active: true,
-    });
-    setModalVisible(true);
-  };
 
   const openEdit = (s: any) => {
     setEditStore(s);
@@ -191,9 +178,6 @@ export default function AdminStoresScreen() {
     <AppScreen>
       <View style={styles.header}>
         <Text style={styles.title}>Stores</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color={theme.textPrimary} />
-        </TouchableOpacity>
       </View>
 
       {loading ? (

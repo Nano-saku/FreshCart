@@ -64,17 +64,7 @@ export default function AdminProductsScreen() {
     fetchCategories();
   }, []);
 
-  const openAdd = () => {
-    setEditProduct(null);
-    setForm({
-      name: "",
-      description: "",
-      unit: "piece",
-      category_id: "",
-      image_url: "",
-    });
-    setModalVisible(true);
-  };
+
 
   const openEdit = (p: any) => {
     setEditProduct(p);
@@ -151,9 +141,6 @@ export default function AdminProductsScreen() {
     <AppScreen>
       <View style={styles.header}>
         <Text style={styles.title}>Products</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Plus size={20} color={theme.textPrimary} />
-        </TouchableOpacity>
       </View>
 
       {loading ? (
