@@ -1,12 +1,6 @@
 import { Tabs } from "expo-router";
 import { StyleSheet, View, Text } from "react-native";
-import {
-  Home,
-  Search,
-  ShoppingCart,
-  ClipboardList,
-  User,
-} from "lucide-react-native";
+import { Home, Search, ShoppingCart, ClipboardList, User } from "lucide-react-native";
 import { colors } from "../../src/constants/colors";
 import { useCartStore } from "../../src/stores/cartStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
@@ -43,15 +37,7 @@ export default function CustomerLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Home size={size || 24} color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: ({ color, size }) => <Home size={size || 24} color={color} /> }} />
       <Tabs.Screen
         name="cart"
         options={{
@@ -61,32 +47,25 @@ export default function CustomerLayout() {
               <ShoppingCart size={size || 24} color={color} />
               {items.length > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {items.length > 9 ? "9+" : items.length}
-                  </Text>
+                  <Text style={styles.badgeText}>{items.length > 9 ? "9+" : items.length}</Text>
                 </View>
               )}
             </View>
           ),
         }}
       />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: "Orders",
-          tabBarIcon: ({ color, size }) => (
-            <ClipboardList size={size || 24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, size }) => (<User size={size || 24} color={color} />) }} />
-      {/* Hidden screens */}
+      <Tabs.Screen name="orders" options={{ title: "Orders", tabBarIcon: ({ color, size }) => <ClipboardList size={size || 24} color={color} /> }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, size }) => <User size={size || 24} color={color} /> }} />
+
+      {/* Hidden screens — not shown in tab bar */}
       <Tabs.Screen name="checkout" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="search" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="order/[id]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="product/[id]" options={{ href: null, headerShown: false }} />
+
       {/* Hidden profile sub-screens */}
       <Tabs.Screen name="profile/addresses" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="profile/payment-methods" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="profile/notifications" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="profile/settings" options={{ href: null, headerShown: false }} />
     </Tabs>
@@ -108,9 +87,5 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderWidth: 2,
     borderColor: theme.surface,
   },
-  badgeText: {
-    color: theme.textInverse,
-    fontSize: 10,
-    fontWeight: "700",
-  },
+  badgeText: { color: theme.textInverse, fontSize: 10, fontWeight: "700" },
 });

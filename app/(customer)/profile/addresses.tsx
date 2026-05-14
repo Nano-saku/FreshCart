@@ -192,7 +192,7 @@ export default function AddressesScreen() {
     <AppScreen>
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace("/../profile")}>
           <ChevronLeft size={22} color={theme.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Delivery Addresses</Text>

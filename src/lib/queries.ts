@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
+import { useAuthStore } from "../stores/authStore";
+
+// Read user from authStore — avoids redundant network round-trips
+const getUser = () => useAuthStore.getState().user;
 
 // ==================== PRODUCTS ====================
 
@@ -85,7 +89,8 @@ export function useStores(userLocation?: { lat: number; lng: number } | null) {
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
           distance = R * c;
         }
-        return { ...store, distance, rating: 4 + Math.random() };
+        // Rating is static per store — not randomised on every render
+        return { ...store, distance, rating: 4.2 };
       });
 
       if (userLocation) {
@@ -104,7 +109,7 @@ export function useCustomerOrders() {
   return useQuery({
     queryKey: ["customer-orders"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = getUser();
       if (!user) return [];
 
       const { data, error } = await supabase
@@ -122,7 +127,7 @@ export function useSellerOrders() {
   return useQuery({
     queryKey: ["seller-orders"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = getUser();
       if (!user) return [];
 
       const { data: storeData } = await supabase
