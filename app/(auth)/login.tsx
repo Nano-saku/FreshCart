@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -191,11 +192,9 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <View style={styles.logoContainer}>
-          <View style={[styles.logoCircle, { backgroundColor: theme.primary + "15" }]}>
-            <Text style={styles.logoEmoji}>🥬</Text>
-          </View>
-          <Text style={[styles.title, { color: theme.textPrimary }]}>FreshCart</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, position: "relative", top: 50 }} />
+          {/* <Text style={[styles.title, { color: theme.textPrimary }]}>FreshCart</Text> */}
+          <Text style={[styles.subtitle, { color: theme.textSecondary }, { position: "absolute", bottom: 0 }]}>
             Fresh groceries delivered to your door
           </Text>
         </View>

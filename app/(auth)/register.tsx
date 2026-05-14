@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
@@ -164,9 +165,7 @@ export default function RegisterScreen() {
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🥬</Text>
-          </View>
+            <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, marginBottom: -60, marginTop: -100}} />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join FreshCart today</Text>
         </View>
