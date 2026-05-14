@@ -5,10 +5,10 @@
     "version": "1.0.0",
     "scheme": "freshcart",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/freshcarticon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/freshcarticon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.freshcart.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/freshcarticon.png",
         "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
@@ -57,7 +57,7 @@
         "projectId": "e61cc4ca-5cfe-4b78-9831-a8041d56675f"
       }
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.1",
     "updates": {
       "url": "https://u.expo.dev/e61cc4ca-5cfe-4b78-9831-a8041d56675f"
     }
