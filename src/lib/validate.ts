@@ -5,4 +5,5 @@ export const validate = {
   password: (s: string) => s.length >= 8 && s.length <= 128,
   address: (s: string) => s.trim().length >= 5 && s.length <= 300,
   notes: (s: string) => s.length <= 500,
+  code: (s: string) => s.trim().length === 6 && /^\d+$/.test(s.trim()),
 };

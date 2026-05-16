@@ -15,6 +15,8 @@ import { router } from "expo-router";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { validate } from "../../src/lib/validate";
+import { checkRateLimit } from "../../src/lib/rateLimiter";
 import {
   ShieldCheck,
   ArrowRight,
@@ -51,7 +53,12 @@ export default function RegisterScreen() {
       Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
-
+    const { allowed, remainingMs } = await checkRateLimit('register:' + email, 3, 60 * 60_000);
+    if (!allowed) {
+      const mins = Math.ceil(remainingMs / 60_000);
+      Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -73,7 +80,15 @@ export default function RegisterScreen() {
   };
 
   const handleVerify = async () => {
-    if (verifyCode.length !== 6) {
+    if (!validate.fullName(fullName))
+      return Alert.alert("Error", "Name must be 2–80 characters.");
+    if (!validate.email(email))
+      return Alert.alert("Error", "Enter a valid email address.");
+    if (!validate.phone(phone))
+      return Alert.alert("Error", "Enter a valid PH mobile number (09XXXXXXXXX).");
+    if (!validate.password(password))
+      return Alert.alert("Error", "Password must be 8–128 characters.");
+    if (!validate.code(verifyCode)) {
       Alert.alert("Error", "Please enter the 6-digit code");
       return;
     }

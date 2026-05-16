@@ -130,7 +130,7 @@ export default function AdminStoresScreen() {
       setModalVisible(false);
       fetchStores();
     } catch (error: any) {
-      console.error("Save store error:", error);
+      logger.error("Save store error:", error);
       Alert.alert("Error", error.message || "Failed to save store");
     } finally {
       setSaving(false);

@@ -8,6 +8,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useCartStore } from "../../src/stores/cartStore";
 import { useAuthStore } from "../../src/stores/authStore";
 import { router } from "expo-router";
+import { validate } from "../../src/lib/validate";
 import {
   ChevronLeft, MapPin, FileText, CreditCard,
   Truck, CheckCircle2, Phone,
@@ -83,7 +84,10 @@ export default function CheckoutScreen() {
   }, [step, user]);
 
   const handleOrder = async () => {
-    if (!address.trim()) return Alert.alert("Required", "Please enter a delivery address.");
+    if (address && !validate.address(address))
+      return Alert.alert("Error", "Address must be 5–300 characters.");
+    if (notes && !validate.notes(notes))
+      return Alert.alert("Error", "Notes must be under 500 characters.");
     if (items.length === 0) return Alert.alert("Error", "Your cart is empty.");
     if (!user) return Alert.alert("Sign In Required", "Please sign in to place an order.");
     if (isMultiStore) {

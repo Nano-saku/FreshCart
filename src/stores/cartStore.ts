@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "./authStore";
+import { logger } from "../lib/logger";
 
 export interface CartItem {
   id: string;
@@ -59,7 +60,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       .eq("customer_id", user.id);
 
     if (error) {
-      console.error("Fetch cart error:", error);
+      logger.error("Fetch cart error:", error);
       set({ loading: false });
       return;
     }

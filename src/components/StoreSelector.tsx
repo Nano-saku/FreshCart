@@ -15,6 +15,7 @@ import { supabase } from "../lib/supabase";
 import { useTheme } from "../contexts/ThemeContext";
 import { Store, MapPin, Navigation, X, ChevronRight, Star } from "lucide-react-native";
 import { BlurView } from "expo-blur";
+import { logger } from "../lib/logger";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = 260;
@@ -53,7 +54,7 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
         .order("name");
 
       if (error) {
-        console.error("Supabase StoreSelector error:", error);
+        logger.error("Supabase StoreSelector error:", error);
         throw error;
       }
 

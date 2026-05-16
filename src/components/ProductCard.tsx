@@ -7,6 +7,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { router } from "expo-router";
 import { Plus, ShoppingCart } from "lucide-react-native";
 import { useState, useRef } from "react";
+import { logger } from "../lib/logger";
 
 const CURRENCY = "₱";
 
@@ -26,7 +27,7 @@ export function ProductCard({ item }: { item: any }) {
     try {
       await addItem(item.id, 1);
     } catch (err) {
-      console.error("Add to cart error:", err);
+      logger.error("Add to cart error:", err);
     } finally {
       setTimeout(() => setAdding(false), 800);
     }

@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ profile });
       return profile;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      logger.error('Error fetching profile:', error);
       return null;
     }
   },
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       router.replace('/(auth)/login');
     } catch (error) {
-      console.error('Error during sign out:', error);
+      logger.error('Error during sign out:', error);
       set({ isLoggingOut: false, loading: false });
     }
   },
@@ -130,7 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await SecureStore.deleteItemAsync('biometric_unlocked').catch(() => {});
 
     } catch (error) {
-      console.error('Error during soft sign out:', error);
+      logger.error('Error during soft sign out:', error);
       set({ isLoggingOut: false, justSoftLoggedOut: false, loading: false });
     }
   },
@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         
       }
     } catch (error) {
-      console.error('Error setting biometric:', error);
+      logger.error('Error setting biometric:', error);
       throw error;
     }
   },
@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
 
       if (error) {
-        console.log('[Auth] refreshSession failed:', error.message);
+        logger.log('[Auth] refreshSession failed:', error.message);
         if (
           error.message.includes('Invalid Refresh Token') ||
           error.message.includes('Refresh Token Not Found') ||

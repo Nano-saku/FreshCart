@@ -91,7 +91,7 @@ export default function AdminUsersScreen() {
       setModalVisible(false);
       fetchUsers();
     } catch (error: any) {
-      console.error("Update role error:", error);
+      logger.error("Update role error:", error);
       Alert.alert("Error", error.message || "Failed to update role");
     } finally {
       setActionLoading(false);
@@ -182,7 +182,7 @@ export default function AdminUsersScreen() {
               setModalVisible(false);
               fetchUsers();
             } catch (error: any) {
-              console.error("Delete user error:", error);
+              logger.error("Delete user error:", error);
               Alert.alert("Error", error.message || "Failed to delete user");
             } finally {
               setActionLoading(false);

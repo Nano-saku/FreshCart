@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { File } from "expo-file-system";
 import { supabase } from "../lib/supabase";
 import { Alert } from "react-native";
+import { logger } from "../lib/logger"
 
 export function useImageUpload(bucket: string = "images") {
   const [uploading, setUploading] = useState(false);
@@ -85,7 +86,7 @@ export function useImageUpload(bucket: string = "images") {
 
       return publicUrl;
     } catch (error: any) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       Alert.alert(
         "Upload failed",
         error.message || "Could not upload image. Please try again.",

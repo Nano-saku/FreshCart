@@ -45,12 +45,6 @@ export default function LoginScreen() {
     didAutoTrigger.current = true;
 
     try {
-      const { allowed, remainingMs } = await checkRateLimit('login:' + email, 5, 15 * 60_000);
-      if (!allowed) {
-        const mins = Math.ceil(remainingMs / 60_000);
-        Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
-        return;
-      }
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const biometricFlag = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
@@ -124,6 +118,13 @@ export default function LoginScreen() {
   const handleManualLogin = async () => {
     setLoading(true);
     try {
+      const { allowed, remainingMs } = await checkRateLimit('login:' + email, 5, 15 * 60_000);
+      if (!allowed) {
+        setLoading(false);
+        const mins = Math.ceil(remainingMs / 60_000);
+        Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
+        return;
+      }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setLoading(false);

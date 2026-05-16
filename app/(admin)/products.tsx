@@ -112,7 +112,7 @@ export default function AdminProductsScreen() {
       setModalVisible(false);
       fetchProducts();
     } catch (error: any) {
-      console.error("Save product error:", error);
+      logger.error("Save product error:", error);
       Alert.alert("Error", error.message || "Failed to save product");
     } finally {
       setSaving(false);
