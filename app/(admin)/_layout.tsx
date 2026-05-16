@@ -23,7 +23,7 @@ export default function AdminLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Dashboard", tabBarIcon: ({ color, size }) => <LayoutDashboard size={size || 24} color={color} /> }} />
-      <Tabs.Screen name="orders" options={{ title: "Orders", tabBarIcon: ({ color, size }) => <ClipboardList size={size || 24} color={color} /> }} />
+      <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="products" options={{ title: "Products", tabBarIcon: ({ color, size }) => <Package size={size || 24} color={color} /> }} />
       <Tabs.Screen name="stores" options={{ title: "Stores", tabBarIcon: ({ color, size }) => <Store size={size || 24} color={color} /> }} />
       <Tabs.Screen name="users" options={{ title: "Users", tabBarIcon: ({ color, size }) => <Users size={size || 24} color={color} /> }} />

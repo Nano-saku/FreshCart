@@ -5,11 +5,11 @@ import {
   KeyboardAvoidingView, Platform, Switch,
 } from "react-native";
 import { router } from "expo-router";
-import { AppScreen } from "../../../src/components/AppScreen";
-import { supabase } from "../../../src/lib/supabase";
-import { useAuthStore } from "../../../src/stores/authStore";
-import { logger } from "../../../src/lib/logger"
-import { useTheme } from "../../../src/contexts/ThemeContext";
+import { AppScreen } from "../../src/components/AppScreen";
+import { supabase } from "../../src/lib/supabase";
+import { useAuthStore } from "../../src/stores/authStore";
+import { logger } from "../../src/lib/logger"
+import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   ChevronLeft, MapPin, Phone, Plus, Trash2,
   Edit3, CheckCircle2, Home, Briefcase, MoreHorizontal,
@@ -193,7 +193,7 @@ export default function AddressesScreen() {
     <AppScreen>
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace("/../profile")}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={22} color={theme.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Delivery Addresses</Text>
@@ -377,7 +377,7 @@ export default function AddressesScreen() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) =>
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) =>
   StyleSheet.create({
     topBar: {
       flexDirection: "row",

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { router } from "expo-router";
-import { AppScreen } from "../../../src/components/AppScreen";
-import { useTheme } from "../../../src/contexts/ThemeContext";
+import { AppScreen } from "../../src/components/AppScreen";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import { ChevronLeft, Banknote, CreditCard, Clock } from "lucide-react-native";
 
 const METHODS = [
@@ -87,7 +87,7 @@ export default function PaymentMethodsScreen() {
   );
 }
 
-const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) =>
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) =>
   StyleSheet.create({
     topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
     backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.border },

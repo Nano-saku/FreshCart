@@ -3,9 +3,9 @@ import {
   StyleSheet, ScrollView, ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
-import { AppScreen } from "../../../src/components/AppScreen";
-import { useTheme } from "../../../src/contexts/ThemeContext";
-import { useNotificationPrefs } from "../../../src/hooks/useNotificationPrefs";
+import { AppScreen } from "../../src/components/AppScreen";
+import { useTheme } from "../../src/contexts/ThemeContext";
+import { useNotificationPrefs } from "../../src/hooks/useNotificationPrefs";
 import { ChevronLeft, Bell, Tag, Package, BellOff } from "lucide-react-native";
 
 const PREF_ITEMS = [
@@ -113,7 +113,7 @@ export default function NotificationsScreen() {
   );
 }
 
-const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) =>
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) =>
   StyleSheet.create({
     topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
     backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.border },

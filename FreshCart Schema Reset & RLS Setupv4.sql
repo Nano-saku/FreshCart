@@ -416,7 +416,7 @@ begin
   return exists (
     select 1 from auth.users
     where id = auth.uid()
-    and raw_app_data->>'role' = 'admin'
+    and raw_app_meta_data->>'role' = 'admin'
   );
 end;
 $$ language plpgsql stable security definer;
@@ -523,7 +523,7 @@ create or replace function public.sync_user_role_to_metadata()
 returns trigger as $$
 begin
   update auth.users
-  set raw_app_data =
+  set raw_app_meta_data =
     coalesce(raw_app_data, '{}'::jsonb) ||
     jsonb_build_object('role', new.role)
   where id = new.id;

@@ -1,10 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
-import { AppScreen } from "../../../src/components/AppScreen";
-import { useAuthStore } from "../../../src/stores/authStore";
-import { useTheme } from "../../../src/contexts/ThemeContext";
+import { AppScreen } from "../../src/components/AppScreen";
+import { useAuthStore } from "../../src/stores/authStore";
+import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, LogIn, UserPlus } from "lucide-react-native";
-import ProfileScreen from "../../../src/components/ProfileScreen";
+import ProfileScreen from "../../src/components/ProfileScreen";
 
 export default function CustomerProfileScreen() {
   const { theme } = useTheme();
@@ -51,7 +51,7 @@ export default function CustomerProfileScreen() {
   return <ProfileScreen />;
 }
 
-const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) => StyleSheet.create({
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
   guestContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 16, marginTop: 40 },
   avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   guestTitle: { fontSize: 24, fontWeight: "800", textAlign: "center" },

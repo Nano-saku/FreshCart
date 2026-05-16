@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { useTheme } from "../../../src/contexts/ThemeContext";
+import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function ProfileLayout() {
   const { theme } = useTheme();

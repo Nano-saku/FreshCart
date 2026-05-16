@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, Alert, Switch, StyleSheet,
+  Modal, Alert, Switch, StyleSheet, ActivityIndicator,
 } from "react-native";
 import { useState, useEffect } from "react";
 import { router } from "expo-router";
@@ -10,6 +10,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import {
   LogOut, User, Shield, ChevronRight,
   Settings, Bell, MapPin, CreditCard, Moon, Sun,
+  ShoppingBag, BarChart3, Users, Package, DollarSign,
+  TrendingUp, Star, Truck, ClipboardList, Store,
+  Eye, MessageCircle, Gift, Archive, Tag, LogIn, UserPlus
 } from "lucide-react-native";
 
 export default function ProfileScreen() {
@@ -76,28 +79,128 @@ export default function ProfileScreen() {
   const roleStyle = getRoleBadgeStyle();
   const styles = createStyles(theme);
 
-  const menuItems = [
-    {
-      icon: MapPin,
-      label: "Delivery Addresses",
-      onPress: () => router.push("/(customer)/profile/addresses"),
-    },
-    {
-      icon: CreditCard,
-      label: "Payment Methods",
-      onPress: () => router.push("/(customer)/profile/payment-methods"),
-    },
+  if (!user) {
+    return (
+      <AppScreen>
+        <View style={styles.guestContainer}>
+          <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + "15" }]}>
+            <User size={48} color={theme.primary} />
+          </View>
+          <Text style={[styles.guestTitle, { color: theme.textPrimary }]}>Welcome to FreshCart</Text>
+          <Text style={[styles.guestSubtitle, { color: theme.textSecondary }]}>
+            Sign in to track orders, save addresses, and get personalized recommendations.
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={[styles.primaryBtn, { backgroundColor: theme.primary }]}>
+            <LogIn size={20} color="#fff" />
+            <Text style={styles.primaryBtnText}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={[styles.secondaryBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+            <UserPlus size={20} color={theme.primary} />
+            <Text style={[styles.secondaryBtnText, { color: theme.primary }]}>Create Account</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(customer)")} style={styles.browseLink}>
+            <Text style={[styles.browseLinkText, { color: theme.textMuted }]}>Continue browsing as guest →</Text>
+          </TouchableOpacity>
+        </View>
+      </AppScreen>
+    );
+  }
+
+  // Common menu items for all roles
+  const commonMenuItems = [
     {
       icon: Bell,
       label: "Notifications",
-      onPress: () => router.push("/(customer)/profile/notifications"),
+      onPress: () => router.push("/profile/notifications"),
+      roles: ["customer", "seller", "admin"],
     },
     {
       icon: Settings,
       label: "Settings",
-      onPress: () => router.push("/(customer)/profile/settings"),
+      onPress: () => router.push("/profile/settings"),
+      roles: ["customer", "seller", "admin"],
     },
   ];
+
+  // Customer-specific menu items
+  const customerMenuItems = [
+    {
+      icon: MapPin,
+      label: "Delivery Addresses",
+      onPress: () => router.push("/profile/addresses"),
+      roles: ["customer"],
+    },
+    {
+      icon: CreditCard,
+      label: "Payment Methods",
+      onPress: () => router.push("/profile/payment-methods"),
+      roles: ["customer"],
+    },
+    {
+      icon: Gift,
+      label: "Offers & Coupons",
+      onPress: () => Alert.alert("Coming Soon", "Language selection will be available in a future update."),
+      roles: ["customer"],
+    },
+    {
+      icon: Truck,
+      label: "Order History",
+      onPress: () => router.push("/customer/orders"),
+      roles: ["customer"],
+    },
+  ];
+
+  // Admin-specific menu items
+  const adminMenuItems = [
+    {
+      icon: BarChart3,
+      label: "Platform Analytics",
+      onPress: () => Alert.alert("Coming Soon", "Platform Analytics is not available at the moment"),
+      roles: ["admin"],
+    },
+    {
+      icon: Eye,
+      label: "Audit Logs",
+      onPress: () => Alert.alert("Coming Soon", "Audit Logs is not available at the moment"),
+      roles: ["admin"],
+    },
+    {
+      icon: ShoppingBag,
+      label: "All Orders",
+      onPress: () => router.push("/orders"),
+      roles: ["admin"],
+    },
+    {
+      icon: Tag,
+      label: "Platform Coupons",
+      onPress: () => Alert.alert("Coming Soon", "Platform Coupons is not available at the moment"),
+      roles: ["admin"],
+    },
+    {
+      icon: MessageCircle,
+      label: "Support Tickets",
+      onPress: () => Alert.alert("Coming Soon", "Support Tickets is not available at the moment"),
+      roles: ["admin"],
+    },
+  ];
+
+  // Combine all menu items based on user role
+  const allMenuItems = [
+    ...(profile?.role === "customer" ? customerMenuItems : []),
+    ...(profile?.role === "admin" ? adminMenuItems : []),
+    ...commonMenuItems,
+  ];
+
+  const getRoleTitle = () => {
+    switch (profile?.role) {
+      case "admin":
+        return "Administrator";
+      case "seller":
+        return "Seller Dashboard";
+      default:
+        return "Customer Profile";
+    }
+  };
 
   return (
     <AppScreen>
@@ -111,14 +214,15 @@ export default function ProfileScreen() {
           <Text style={styles.email}>{user?.email}</Text>
           <View style={[styles.badge, { backgroundColor: roleStyle.backgroundColor, borderColor: roleStyle.borderColor }]}>
             <Text style={[styles.badgeText, { color: roleStyle.color }]}>
-              {profile?.role || "Customer"}
+              {profile?.role === "admin" ? "Administrator" : profile?.role === "seller" ? "Seller" : "Customer"}
             </Text>
           </View>
         </View>
 
         {/* Menu Items */}
+        <Text style={styles.sectionTitle}>{getRoleTitle()}</Text>
         <View style={styles.menuSection}>
-          {menuItems.map((item, index) => (
+          {allMenuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -254,7 +358,17 @@ export default function ProfileScreen() {
   );
 }
 
-const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
+  guestContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 16, marginTop: 40 },
+  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  guestTitle: { fontSize: 24, fontWeight: "800", textAlign: "center" },
+  guestSubtitle: { fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 8 },
+  primaryBtn: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, borderRadius: 16, marginTop: 8 },
+  primaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  secondaryBtn: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, borderRadius: 16, borderWidth: 1 },
+  secondaryBtnText: { fontSize: 16, fontWeight: "700" },
+  browseLink: { marginTop: 8 },
+  browseLinkText: { fontSize: 14 },
   scrollContent: { paddingBottom: 40 },
   header: { alignItems: "center", marginBottom: 32, paddingTop: 20 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: theme.primary + "15", alignItems: "center", justifyContent: "center", marginBottom: 16, borderWidth: 3, borderColor: theme.primary + "30" },
@@ -286,4 +400,9 @@ const createStyles = (theme: typeof import("../constants/colors").lightTheme) =>
   btnSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 2 },
   cancelBtn: { backgroundColor: theme.surfaceVariant, borderRadius: 16, padding: 16, alignItems: "center", borderWidth: 1 },
   cancelText: { color: theme.textSecondary, fontSize: 16, fontWeight: "600" },
+  // New styles for stats grid
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", paddingHorizontal: 16, marginBottom: 24, gap: 12 },
+  statCard: { flex: 1, minWidth: "45%", backgroundColor: theme.surface, borderRadius: 16, padding: 16, alignItems: "center", shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 },
+  statValue: { color: theme.textPrimary, fontSize: 20, fontWeight: "700", marginTop: 8 },
+  statLabel: { color: theme.textSecondary, fontSize: 12, marginTop: 4 },
 });

@@ -4,10 +4,10 @@ import {
   ScrollView, Alert, Linking,
 } from "react-native";
 import { router } from "expo-router";
-import { AppScreen } from "../../../src/components/AppScreen";
-import { useTheme } from "../../../src/contexts/ThemeContext";
-import { useAuthStore } from "../../../src/stores/authStore";
-import { supabase } from "../../../src/lib/supabase";
+import { AppScreen } from "../../src/components/AppScreen";
+import { useTheme } from "../../src/contexts/ThemeContext";
+import { useAuthStore } from "../../src/stores/authStore";
+import { supabase } from "../../src/lib/supabase";
 import { ChevronLeft, ChevronRight, Globe, Info, HelpCircle, FileText, Trash2, Shield } from "lucide-react-native";
 
 export default function SettingsScreen() {
@@ -57,8 +57,8 @@ export default function SettingsScreen() {
       title: "Support",
       items: [
         { icon: HelpCircle, label: "Help & FAQ", value: null, onPress: () => Alert.alert("Support", "For help, email support@freshcart.app") },
-        { icon: FileText, label: "Terms of Service", value: null, onPress: () => Linking.openURL("https://freshcart.app/terms").catch(() => {}) },
-        { icon: Shield, label: "Privacy Policy", value: null, onPress: () => Linking.openURL("https://freshcart.app/privacy").catch(() => {}) },
+        { icon: FileText, label: "Terms of Service", value: null, onPress: () => Linking.openURL("https://freshcart.app/terms").catch(() => { }) },
+        { icon: Shield, label: "Privacy Policy", value: null, onPress: () => Linking.openURL("https://freshcart.app/privacy").catch(() => { }) },
       ],
     },
     {
@@ -121,7 +121,7 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (theme: typeof import("../../../src/constants/colors").lightTheme) =>
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) =>
   StyleSheet.create({
     topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
     backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.border },

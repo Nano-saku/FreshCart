@@ -50,18 +50,22 @@ export default function AdminUsersScreen() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error, count } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
+    try {
+      // Use the RPC function instead of direct table access
+      const { data, error } = await supabase.rpc('get_all_profiles');
 
-    if (error) {
+      if (error) {
+        logger.error("Error fetching users:", error);
+        Alert.alert("Error", "Failed to load users");
+      } else {
+        setUsers(data ?? []);
+      }
+    } catch (error) {
       logger.error("Error fetching users:", error);
       Alert.alert("Error", "Failed to load users");
-    } else {
-      setUsers(data ?? []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -112,14 +116,12 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              // Option 1: Set role to banned (if you have a banned role)
-              // Option 2: Delete the user from auth.users (hard ban)
-              const { error } = await supabase
+              const { error: banError } = await supabase
                 .from("profiles")
                 .update({ role: "banned" })
                 .eq("id", selectedUser.id);
 
-              if (error) throw error;
+              if (banError) throw banError;
 
               Alert.alert("Success", "User has been banned");
               setModalVisible(false);
