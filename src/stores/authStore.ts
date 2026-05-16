@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../lib/logger';
 
 interface AuthState {
   session: Session | null;
@@ -21,6 +22,7 @@ interface AuthState {
   softSignOut: () => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
   restoreSessionFromToken: (refreshToken: string) => Promise<Session | null>;
+  
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -41,6 +43,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
+  
   setProfile: (profile) => set({ profile }),
 
   fetchProfile: async (userId: string) => {
@@ -58,6 +61,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return null;
     }
   },
+
+  
 
   // FULL LOGOUT — invalidates token server-side, clears everything
   signOut: async () => {
@@ -92,6 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const refreshToken = await SecureStore.getItemAsync('refresh_token');
       const biometricFlag = await SecureStore.getItemAsync('biometric_enabled');
 
+
       // Clear state first so no component tries to use the session
       set({
         session: null,
@@ -102,6 +108,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // justSoftLoggedOut stays true — login screen reads this
       });
 
+     
       // Navigate first so the login screen mounts BEFORE we wipe AsyncStorage.
       // This prevents the login screen's getSession() from seeing a stale session.
       router.replace('/(auth)/login');
@@ -116,7 +123,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (supabaseKeys.length > 0) {
         await AsyncStorage.multiRemove(supabaseKeys);
       }
-
+      const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+      if (
+        Date.now() - (new Date(sessionStorage.created_at).getTime()) > SESSION_MAX_AGE_MS
+      ) {
+        await supabase.auth.signOut();
+        set({
+          session: null,
+          user: null,
+          profile: null,
+          biometricEnabled: false,
+          isLoggingOut: false,
+          justSoftLoggedOut: false,
+          loading: false,
+        });
+        router.replace('/(auth)/login');
+      }
       // Restore biometric credentials after the wipe
       if (refreshToken) await SecureStore.setItemAsync('refresh_token', refreshToken);
       if (biometricFlag) await SecureStore.setItemAsync('biometric_enabled', biometricFlag);
@@ -140,6 +162,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
         await SecureStore.setItemAsync('biometric_enabled', 'false');
         set({ biometricEnabled: false });
+        
       }
     } catch (error) {
       console.error('Error setting biometric:', error);
@@ -179,10 +202,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         loading: false,
       });
 
+      
+
       await get().fetchProfile(data.session.user.id);
       return data.session;
     } catch (error) {
-      console.error('[Auth] restoreSessionFromToken error:', error);
+      logger.error('[Auth] restoreSessionFromToken error:', error);
       return null;
     }
   },

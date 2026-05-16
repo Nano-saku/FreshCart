@@ -14,6 +14,8 @@ import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { PackageSearch } from "lucide-react-native";
+import { router } from "expo-router";
 
 const NEXT_STATUS: Record<string, string> = {
   pending: "confirmed",
@@ -26,6 +28,7 @@ export default function AdminOrdersScreen() {
   const { profile } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasStore, setHasStore] = useState(true);
   const { theme } = useTheme();
   const styles = createStyles(theme);
 
@@ -40,9 +43,11 @@ export default function AdminOrdersScreen() {
       .single();
 
     if (!storeData) {
+      setHasStore(false);
       setLoading(false);
       return;
     }
+    setHasStore(true);
 
     const { data } = await supabase
       .from("orders")
@@ -76,6 +81,20 @@ export default function AdminOrdersScreen() {
       </View>
       {loading ? (
         <ActivityIndicator color={theme.textPrimary} style={{ marginTop: 40 }} />
+      ) : !hasStore ? (
+        <View style={styles.noStoreContainer}>
+          <PackageSearch size={50} color={theme.accent} />
+          <Text style={styles.noStoreTitle}>No Store Setup</Text>
+          <Text style={styles.noStoreText}>
+            Please setup your store profile before managing orders.
+          </Text>
+          <TouchableOpacity 
+            style={styles.createStoreBtn}
+            onPress={() => router.push("/(seller)/store-settings")}
+          >
+            <Text style={styles.createStoreBtnText}>Create Store</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={orders}
@@ -179,5 +198,31 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",
+  },
+  noStoreContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  noStoreTitle: {
+    color: theme.textPrimary,
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noStoreText: { color: theme.textMuted, textAlign: "center" },
+  createStoreBtn: {
+    marginTop: 24,
+    backgroundColor: theme.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  createStoreBtnText: {
+    color: theme.surface,
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

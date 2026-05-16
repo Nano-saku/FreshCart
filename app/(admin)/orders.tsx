@@ -2,20 +2,22 @@ import { useState, useCallback } from "react";
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, RefreshControl,
+  ScrollView,
 } from "react-native";
 import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Package, Clock, CheckCircle, XCircle, Truck } from "lucide-react-native";
+import { logger } from "../../src/lib/logger"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  pending:          { label: "Pending",          color: "#F77F00", icon: Clock },
-  confirmed:        { label: "Confirmed",        color: "#4361EE", icon: CheckCircle },
-  preparing:        { label: "Preparing",        color: "#7B2D8B", icon: Package },
+  pending: { label: "Pending", color: "#F77F00", icon: Clock },
+  confirmed: { label: "Confirmed", color: "#4361EE", icon: CheckCircle },
+  preparing: { label: "Preparing", color: "#7B2D8B", icon: Package },
   out_for_delivery: { label: "Out for Delivery", color: "#2196F3", icon: Truck },
-  delivered:        { label: "Delivered",        color: "#52B788", icon: CheckCircle },
-  cancelled:        { label: "Cancelled",        color: "#E63946", icon: XCircle },
+  delivered: { label: "Delivered", color: "#52B788", icon: CheckCircle },
+  cancelled: { label: "Cancelled", color: "#E63946", icon: XCircle },
 };
 
 const NEXT_STATUS: Record<string, string> = {
@@ -40,7 +42,8 @@ export default function AdminOrdersScreen() {
         .from("orders")
         .select("*, store:stores(name), customer:profiles(full_name, phone), order_items(id)")
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      logger.log(data);
+      if (error) throw logger.error;
       return data ?? [];
     },
     refetchInterval: 30000, // Auto-refresh every 30s
@@ -96,18 +99,30 @@ export default function AdminOrdersScreen() {
       </View>
 
       {/* Filter Tabs */}
-      <FlatList
-        data={FILTER_TABS}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}
-        keyExtractor={(item) => item}
-        renderItem={({ item }) => {
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingVertical: 12 }}
+        style={{ flexGrow: 0 }}
+      >
+        {FILTER_TABS.map((item) => {
           const active = activeFilter === item;
           const cfg = STATUS_CONFIG[item];
           return (
             <TouchableOpacity
-              style={[styles.tab, { backgroundColor: active ? (cfg?.color ?? theme.primary) : theme.surface, borderColor: active ? (cfg?.color ?? theme.primary) : theme.border }]}
+              key={item}
+              style={[
+                styles.tab,
+                {
+                  backgroundColor: active ? (cfg?.color ?? theme.primary) : theme.surface,
+                  borderColor: active ? (cfg?.color ?? theme.primary) : theme.border,
+                  elevation: active ? 3 : 0,
+                  shadowColor: active ? (cfg?.color ?? theme.primary) : "transparent",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                }
+              ]}
               onPress={() => setActiveFilter(item)}
             >
               <Text style={[styles.tabText, { color: active ? "#fff" : theme.textSecondary }]}>
@@ -115,8 +130,8 @@ export default function AdminOrdersScreen() {
               </Text>
             </TouchableOpacity>
           );
-        }}
-      />
+        })}
+      </ScrollView>
 
       {isLoading ? (
         <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
@@ -196,8 +211,16 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   header: { padding: 20, paddingBottom: 12 },
   heading: { fontSize: 24, fontWeight: "700" },
   sub: { fontSize: 13, marginTop: 2 },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
-  tabText: { fontSize: 12, fontWeight: "600" },
+  tab: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    minWidth: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabText: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   card: { borderRadius: 16, padding: 16, borderWidth: 1, gap: 4 },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   orderId: { fontSize: 14, fontWeight: "700" },

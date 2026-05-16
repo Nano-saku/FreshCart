@@ -17,6 +17,7 @@ import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2 } from "lucide-react-native";
 import { ImagePickerButton } from "../../src/components/ImagePickerButton";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { logger } from "../../src/lib/logger";
 
 export default function AdminProductsScreen() {
   const [products, setProducts] = useState<any[]>([]);
@@ -41,9 +42,10 @@ export default function AdminProductsScreen() {
       .from("products")
       .select("*, category:categories(name)")
       .order("name");
+    logger.log(data);
 
     if (error) {
-      console.error("Fetch products error:", error);
+      logger.error("Fetch products error:", error);
       Alert.alert("Error", "Failed to load products");
     } else {
       setProducts(data ?? []);
@@ -221,7 +223,7 @@ export default function AdminProductsScreen() {
                       style={[
                         styles.categoryChipText,
                         form.category_id === cat.id &&
-                          styles.categoryChipTextActive,
+                        styles.categoryChipTextActive,
                       ]}
                     >
                       {cat.name}

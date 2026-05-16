@@ -23,14 +23,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.INTERNET",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [

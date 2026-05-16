@@ -19,6 +19,8 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, Lock, Fingerprint, ArrowRight } from "lucide-react-native";
+import { logger } from "../../src/lib/logger";
+import { checkRateLimit } from "../../src/lib/rateLimiter";
 
 const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
 const BIOMETRIC_UNLOCKED_KEY = "biometric_unlocked";
@@ -43,6 +45,11 @@ export default function LoginScreen() {
     didAutoTrigger.current = true;
 
     try {
+      const ratelimmit = await checkRateLimit('login:' + email, 5, 15 * 60_000)
+      if (ratelimmit) {
+        Alert.alert("Too many attempts", "Too many failed login attempts. Please try again later.");
+        return;
+      }
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const biometricFlag = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
@@ -79,7 +86,7 @@ export default function LoginScreen() {
 
       setCheckingSession(false);
     } catch (err) {
-      console.error("[Login] Init error:", err);
+      logger.error("[Login] Init error:", err);
       setCheckingSession(false);
     }
   };
@@ -108,7 +115,7 @@ export default function LoginScreen() {
       await SecureStore.setItemAsync(BIOMETRIC_UNLOCKED_KEY, "true");
       await fetchProfileAndRoute(session.user);
     } catch (err) {
-      console.error("[Biometric] Restore error:", err);
+      logger.error("[Biometric] Restore error:", err);
       setLoading(false);
     }
   };
@@ -192,7 +199,7 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <View style={styles.logoContainer}>
-            <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, position: "relative", top: 50 }} />
+          <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, position: "relative", top: 50 }} />
           {/* <Text style={[styles.title, { color: theme.textPrimary }]}>FreshCart</Text> */}
           <Text style={[styles.subtitle, { color: theme.textSecondary }, { position: "absolute", bottom: 0 }]}>
             Fresh groceries delivered to your door

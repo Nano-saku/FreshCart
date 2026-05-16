@@ -13,6 +13,7 @@ import {
   Truck, CheckCircle2, Phone,
 } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { logger } from "../../src/lib/logger";
 
 type PaymentMethod = "cash_on_delivery" | "bank_transfer";
 
@@ -146,7 +147,7 @@ export default function CheckoutScreen() {
       setPlacedOrderId(order.id);
       setStep(4);
     } catch (err: any) {
-      console.error("Checkout error:", err);
+      logger.error("Checkout error:", err);
       Alert.alert("Order Failed", err.message ?? "Something went wrong. Please try again.");
     } finally {
       setLoading(false);

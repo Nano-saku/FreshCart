@@ -15,6 +15,7 @@ import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { logger } from "../../src/lib/logger";
 import {
   User,
   Shield,
@@ -42,7 +43,7 @@ export default function AdminUsersScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { theme } = useTheme();
-const styles = createStyles(theme);
+  const styles = createStyles(theme);
   const [modalVisible, setModalVisible] = useState(false);
   const [editRole, setEditRole] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -53,13 +54,10 @@ const styles = createStyles(theme);
       .from("profiles")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false });
-
-    console.log("Error:", error);
-    console.log("Count:", count);
-    console.log("Data length:", data?.length);
+    logger.log()
 
     if (error) {
-      console.error("Error fetching users:", error);
+      logger.error("Error fetching users:", error);
       Alert.alert("Error", "Failed to load users");
     } else {
       setUsers(data ?? []);

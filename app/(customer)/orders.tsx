@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { OrderStatusBadge } from "../../src/components/OrderStatus";
 import { Package, Clock, ChevronRight } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { logger } from "../../src/lib/logger";
 
 export default function OrdersScreen() {
   const { theme } = useTheme();
@@ -45,7 +46,7 @@ export default function OrdersScreen() {
       if (error) throw error;
       setOrders(data ?? []);
     } catch (err) {
-      console.error("Fetch orders error:", err);
+      logger.error("Fetch orders error:", err);
     } finally {
       setLoading(false);
     }

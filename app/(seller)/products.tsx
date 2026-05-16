@@ -18,6 +18,7 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2, PackageSearch } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { router } from "expo-router";
 
 export default function SellerProducts() {
   const { profile } = useAuthStore();
@@ -186,6 +187,12 @@ export default function SellerProducts() {
             Please setup your store profile first in the Profile tab before
             managing products.
           </Text>
+          <TouchableOpacity 
+            style={styles.createStoreBtn}
+            onPress={() => router.push("/(seller)/store-settings")}
+          >
+            <Text style={styles.createStoreBtnText}>Create Store</Text>
+          </TouchableOpacity>
         </View>
       </AppScreen>
     );
@@ -434,6 +441,18 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     marginBottom: 8,
   },
   noStoreText: { color: theme.textMuted, textAlign: "center" },
+  createStoreBtn: {
+    marginTop: 24,
+    backgroundColor: theme.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  createStoreBtnText: {
+    color: theme.surface,
+    fontSize: 16,
+    fontWeight: "700",
+  },
 
   modalOverlay: {
     flex: 1,

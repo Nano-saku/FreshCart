@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { LayoutDashboard, Package, Store, Users, ClipboardList } from "lucide-react-native";
+import { LayoutDashboard, Package, Store, Users, ClipboardList, User } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
 
 export default function AdminLayout() {
@@ -27,7 +27,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="products" options={{ title: "Products", tabBarIcon: ({ color, size }) => <Package size={size || 24} color={color} /> }} />
       <Tabs.Screen name="stores" options={{ title: "Stores", tabBarIcon: ({ color, size }) => <Store size={size || 24} color={color} /> }} />
       <Tabs.Screen name="users" options={{ title: "Users", tabBarIcon: ({ color, size }) => <Users size={size || 24} color={color} /> }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, size }) => <Users size={size || 24} color={color} /> }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ color, size }) => <User size={size || 24} color={color} /> }} />
     </Tabs>
   );
 }

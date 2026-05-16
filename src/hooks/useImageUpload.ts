@@ -44,12 +44,15 @@ export function useImageUpload(bucket: string = "images") {
     return result.assets[0].uri;
   };
 
-  const uploadToSupabase = async (
-    uri: string,
-    path?: string,
-  ): Promise<string | null> => {
-    setUploading(true);
+ const uploadToSupabase = async (uri: string, path?: string) => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!ALLOWED_TYPES.includes(blob.type)) {
+    Alert.alert('Invalid file', 'Only JPEG, PNG, and WebP allowed.');
+    return null;
+  }
     try {
       // FIX #2: Use the new expo-file-system File class (SDK 55+) to read
       // the local file:// URI as an ArrayBuffer — no base64 roundtrip needed.

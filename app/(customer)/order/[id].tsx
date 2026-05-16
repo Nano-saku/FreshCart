@@ -13,6 +13,7 @@ import { AppScreen } from "../../../src/components/AppScreen";
 import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
 import { useTheme } from "../../../src/contexts/ThemeContext";
+import { logger } from "../../../src/lib/logger";
 import {
   OrderStatusSteps,
   OrderStatusBadge,
@@ -48,7 +49,7 @@ export default function OrderTrackingScreen() {
       if (error) throw error;
       setOrder(data);
     } catch (err) {
-      console.error("Fetch order error:", err);
+      logger.error("Fetch order error:", err);
     } finally {
       setLoading(false);
     }

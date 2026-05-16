@@ -24,6 +24,7 @@ import {
   Phone,
   Lock,
 } from "lucide-react-native";
+import { logger } from "../../src/lib/logger";
 
 type UserRole = "customer" | "seller";
 
@@ -40,7 +41,7 @@ export default function RegisterScreen() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const { theme } = useTheme();
-    const styles = createStyles(theme);
+  const styles = createStyles(theme);
 
   const handleRegister = async () => {
     if (!fullName || !email || !password || !phone) {
@@ -116,7 +117,7 @@ export default function RegisterScreen() {
     if (resendTimer > 0) return;
     const { error } = await supabase.auth.resend({ type: "signup", email });
     if (error) {
-      Alert.alert("Error", error.message);
+      logger.error(error.message);
       return;
     }
     startResendTimer();
@@ -142,19 +143,19 @@ export default function RegisterScreen() {
     icon: any;
     desc: string;
   }[] = [
-    {
-      value: "customer",
-      label: "Customer",
-      icon: User,
-      desc: "Browse and shop",
-    },
-    {
-      value: "seller",
-      label: "Seller",
-      icon: Store,
-      desc: "Manage your store",
-    },
-  ];
+      {
+        value: "customer",
+        label: "Customer",
+        icon: User,
+        desc: "Browse and shop",
+      },
+      {
+        value: "seller",
+        label: "Seller",
+        icon: Store,
+        desc: "Manage your store",
+      },
+    ];
 
   return (
     <View style={styles.container}>
@@ -165,7 +166,7 @@ export default function RegisterScreen() {
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
-            <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, marginBottom: -60, marginTop: -100}} />
+          <Image source={require("../../assets/freshcarticon.png")} style={{ width: 240, height: 240, marginBottom: -60, marginTop: -100 }} />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join FreshCart today</Text>
         </View>

@@ -12,8 +12,9 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { colors } from "../../src/constants/colors";
 import { BlurView } from "expo-blur";
-import { Store, Package, ListOrdered, TrendingUp } from "lucide-react-native";
+import { Store, Package, ListOrdered, TrendingUp, Settings } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { router } from "expo-router";
 
 export default function SellerDashboard() {
   const { profile } = useAuthStore();
@@ -102,6 +103,12 @@ export default function SellerDashboard() {
             <Text style={styles.noStoreText}>
               You need to set up a store profile before you can start selling.
             </Text>
+            <TouchableOpacity 
+              style={styles.createStoreBtn}
+              onPress={() => router.push("/(seller)/store-settings")}
+            >
+              <Text style={styles.createStoreBtnText}>Create Store</Text>
+            </TouchableOpacity>
           </BlurView>
         ) : (
           <View style={styles.content}>
@@ -109,12 +116,18 @@ export default function SellerDashboard() {
               <View style={styles.storeIcon}>
                 <Store size={24} color={theme.accent} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.storeName}>{store.name}</Text>
                 <Text style={styles.storeStatus}>
                   {store.is_active ? "🟢 Active" : "🔴 Inactive"}
                 </Text>
               </View>
+              <TouchableOpacity
+                style={styles.settingsBtn}
+                onPress={() => router.push("/(seller)/store-settings")}
+              >
+                <Settings size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
             </BlurView>
 
             <View style={styles.statsGrid}>
@@ -238,5 +251,27 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   statLabel: {
     color: theme.textMuted,
     fontSize: 13,
+  },
+  createStoreBtn: {
+    marginTop: 20,
+    backgroundColor: theme.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  createStoreBtnText: {
+    color: theme.surface,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
 });

@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { AppScreen } from "../../../src/components/AppScreen";
 import { supabase } from "../../../src/lib/supabase";
 import { useAuthStore } from "../../../src/stores/authStore";
+import { logger } from "../../../src/lib/logger"
 import { useTheme } from "../../../src/contexts/ThemeContext";
 import {
   ChevronLeft, MapPin, Phone, Plus, Trash2,
@@ -73,7 +74,7 @@ export default function AddressesScreen() {
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: true });
 
-    if (error) console.error("Fetch addresses error:", error);
+    if (error) logger.error("Fetch addresses error:", error);
     else setAddresses(data || []);
     setLoading(false);
   }, [user]);
@@ -139,7 +140,7 @@ export default function AddressesScreen() {
       setShowModal(false);
       await fetchAddresses();
     } catch (err) {
-      console.error("Save address error:", err);
+      logger.error("Save address error:", err);
       Alert.alert("Error", "Failed to save address. Please try again.");
     } finally {
       setSaving(false);

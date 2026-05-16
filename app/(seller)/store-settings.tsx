@@ -1,0 +1,386 @@
+import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Image,
+} from "react-native";
+import { AppScreen } from "../../src/components/AppScreen";
+import { BlurView } from "expo-blur";
+import { supabase } from "../../src/lib/supabase";
+import { useAuthStore } from "../../src/stores/authStore";
+import { useTheme } from "../../src/contexts/ThemeContext";
+import { Store, MapPin, Save, ChevronLeft, Camera } from "lucide-react-native";
+import { router } from "expo-router";
+import { useImageUpload } from "../../src/hooks/useImageUpload";
+
+export default function StoreSettings() {
+  const { profile } = useAuthStore();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [store, setStore] = useState<any>(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    address: "",
+    logo_url: "",
+    is_active: true,
+  });
+
+  const { uploadImage, uploading } = useImageUpload("images");
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchStore();
+    }
+  }, [profile]);
+
+  const fetchStore = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("stores")
+      .select("*")
+      .eq("owner_id", profile?.id)
+      .single();
+
+    if (data) {
+      setStore(data);
+      setForm({
+        name: data.name || "",
+        description: data.description || "",
+        address: data.address || "",
+        logo_url: data.logo_url || "",
+        is_active: data.is_active ?? true,
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleImagePick = async () => {
+    Alert.alert("Upload Logo", "Choose image source", [
+      { text: "Camera", onPress: () => processImagePick("camera") },
+      { text: "Gallery", onPress: () => processImagePick("gallery") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const processImagePick = async (source: "camera" | "gallery") => {
+    const url = await uploadImage(source, "stores");
+    if (url) {
+      setForm((prev) => ({ ...prev, logo_url: url }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return Alert.alert("Error", "Store name is required");
+    if (!form.address.trim()) return Alert.alert("Error", "Store address is required");
+
+    setSaving(true);
+    try {
+      if (store?.id) {
+        // Update existing store
+        const { error } = await supabase
+          .from("stores")
+          .update({
+            name: form.name.trim(),
+            description: form.description.trim(),
+            address: form.address.trim(),
+            logo_url: form.logo_url,
+            is_active: form.is_active,
+          })
+          .eq("id", store.id);
+        if (error) throw error;
+        Alert.alert("Success", "Store updated successfully");
+      } else {
+        // Create new store
+        const { error } = await supabase.from("stores").insert({
+          owner_id: profile?.id,
+          name: form.name.trim(),
+          description: form.description.trim(),
+          address: form.address.trim(),
+          logo_url: form.logo_url,
+          is_active: form.is_active,
+        });
+        if (error) throw error;
+        Alert.alert("Success", "Store created successfully");
+        fetchStore();
+      }
+      router.back();
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppScreen>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </AppScreen>
+    );
+  }
+
+  return (
+    <AppScreen>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <ChevronLeft size={24} color={theme.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.title}>{store ? "Store Settings" : "Create Store"}</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.container}>
+        <BlurView intensity={30} tint="light" style={styles.card}>
+          <TouchableOpacity style={styles.imagePickerContainer} onPress={handleImagePick} disabled={uploading}>
+            {form.logo_url ? (
+              <Image source={{ uri: form.logo_url }} style={styles.storeImage} />
+            ) : (
+              <View style={styles.iconContainer}>
+                <Store size={48} color={theme.primary} />
+              </View>
+            )}
+            <View style={styles.editIconContainer}>
+              {uploading ? (
+                <ActivityIndicator color={theme.surface} size="small" />
+              ) : (
+                <Camera size={20} color={theme.surface} />
+              )}
+            </View>
+          </TouchableOpacity>
+
+          <Text style={styles.label}>Store Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={form.name}
+            onChangeText={(v) => setForm({ ...form, name: v })}
+            placeholder="E.g., Fresh Fruits Corner"
+            placeholderTextColor={theme.textMuted}
+          />
+
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={form.description}
+            onChangeText={(v) => setForm({ ...form, description: v })}
+            placeholder="Tell customers about your store..."
+            placeholderTextColor={theme.textMuted}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>Store Address *</Text>
+          <View style={styles.addressContainer}>
+            <MapPin size={20} color={theme.textMuted} style={styles.addressIcon} />
+            <TextInput
+              style={[styles.input, styles.addressInput]}
+              value={form.address}
+              onChangeText={(v) => setForm({ ...form, address: v })}
+              placeholder="Full store address"
+              placeholderTextColor={theme.textMuted}
+            />
+          </View>
+
+          {store && (
+            <TouchableOpacity
+              style={styles.statusToggle}
+              onPress={() => setForm({ ...form, is_active: !form.is_active })}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: form.is_active ? theme.primary : theme.textMuted },
+                ]}
+              />
+              <Text style={styles.statusText}>
+                {form.is_active ? "Store is Active & Visible" : "Store is Hidden (Inactive)"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={theme.surface} />
+            ) : (
+              <>
+                <Save size={20} color={theme.surface} />
+                <Text style={styles.saveBtnText}>
+                  {store ? "Save Changes" : "Create Store"}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </BlurView>
+      </ScrollView>
+    </AppScreen>
+  );
+}
+
+const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: theme.textPrimary,
+  },
+  container: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.surface + "80",
+  },
+  imagePickerContainer: {
+    alignSelf: "center",
+    marginBottom: 24,
+    position: "relative",
+  },
+  storeImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: theme.primary + "30",
+  },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: theme.primary + "30",
+  },
+  editIconContainer: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: theme.surface,
+  },
+  label: {
+    color: theme.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: theme.surfaceVariant,
+    borderRadius: 16,
+    padding: 16,
+    color: theme.textPrimary,
+    fontSize: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  addressContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  addressIcon: {
+    position: "absolute",
+    left: 16,
+    zIndex: 1,
+    top: 16,
+  },
+  addressInput: {
+    flex: 1,
+    paddingLeft: 48,
+  },
+  statusToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: theme.surfaceVariant,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginBottom: 24,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  statusText: {
+    color: theme.textPrimary,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  saveBtn: {
+    backgroundColor: theme.primary,
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 8,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveBtnText: {
+    color: theme.surface,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+});

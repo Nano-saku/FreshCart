@@ -18,6 +18,7 @@ import { colors } from "../../src/constants/colors";
 import { Plus, Pencil, Trash2, Store } from "lucide-react-native";
 import { ImagePickerButton } from "../../src/components/ImagePickerButton";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { logger } from "../../src/lib/logger";
 
 export default function AdminStoresScreen() {
   const { theme } = useTheme();
@@ -44,9 +45,10 @@ export default function AdminStoresScreen() {
       .from("stores")
       .select("*, owner:profiles(full_name)")
       .order("name");
+    logger.log(data)
 
     if (error) {
-      console.error("Fetch stores error:", error);
+      logger.error("Fetch stores error:", error);
       Alert.alert("Error", "Failed to load stores");
     } else {
       setStores(data ?? []);
