@@ -45,9 +45,10 @@ export default function LoginScreen() {
     didAutoTrigger.current = true;
 
     try {
-      const ratelimmit = await checkRateLimit('login:' + email, 5, 15 * 60_000)
-      if (ratelimmit) {
-        Alert.alert("Too many attempts", "Too many failed login attempts. Please try again later.");
+      const { allowed, remainingMs } = await checkRateLimit('login:' + email, 5, 15 * 60_000);
+      if (!allowed) {
+        const mins = Math.ceil(remainingMs / 60_000);
+        Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
         return;
       }
       const hasHardware = await LocalAuthentication.hasHardwareAsync();

@@ -123,22 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (supabaseKeys.length > 0) {
         await AsyncStorage.multiRemove(supabaseKeys);
       }
-      const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-      if (
-        Date.now() - (new Date(sessionStorage.created_at).getTime()) > SESSION_MAX_AGE_MS
-      ) {
-        await supabase.auth.signOut();
-        set({
-          session: null,
-          user: null,
-          profile: null,
-          biometricEnabled: false,
-          isLoggingOut: false,
-          justSoftLoggedOut: false,
-          loading: false,
-        });
-        router.replace('/(auth)/login');
-      }
+      
       // Restore biometric credentials after the wipe
       if (refreshToken) await SecureStore.setItemAsync('refresh_token', refreshToken);
       if (biometricFlag) await SecureStore.setItemAsync('biometric_enabled', biometricFlag);

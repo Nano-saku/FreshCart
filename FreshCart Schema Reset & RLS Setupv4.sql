@@ -1,7 +1,36 @@
 -- =====================================================
--- FRESHCART COMPLETE SCHEMA (v3.0 - Production Ready)
+-- FRESHCART COMPLETE SCHEMA (v4.0 - Security Hardened)
 -- =====================================================
--- Changes from v2.2:
+-- Changes from v3.0:
+--   [SECURITY] is_admin() — reads raw_app_data instead of
+--     raw_user_meta_data to prevent user self-elevation via
+--     supabase.auth.updateUser(). Role truth now lives in
+--     server-write-only app_metadata.
+--   [SECURITY] sync_user_role_to_metadata() — now syncs to
+--     raw_app_data (app_metadata) instead of raw_user_meta_data.
+--   [SECURITY] profiles.role — added 'banned' to the CHECK
+--     constraint so ban operations don't violate the constraint.
+--   [SECURITY] "Allow authenticated read all profiles" policy
+--     removed — it exposed every user's PII (phone, email, role)
+--     to all authenticated users. Admin reads now go through the
+--     get_all_profiles() SECURITY DEFINER function instead.
+--   [SECURITY] "admin view deletion requests" policy added —
+--     lets admins see profiles with deletion_requested = true
+--     without the wide-open read policy.
+--   [SECURITY] verification_codes — open anon/authenticated
+--     policy replaced with a SECURITY DEFINER verify_code()
+--     function. Clients never read codes directly.
+--   [SECURITY] Storage update/delete policies now scope to
+--     owner = auth.uid() instead of any authenticated user,
+--     preventing cross-user file overwrites.
+--   [SECURITY] Storage insert policy now enforces path prefix
+--     = auth.uid() so users can only write into their own folder.
+--   [SECURITY] get_all_profiles() SECURITY DEFINER function
+--     added for admin-only full profile reads.
+--   [SECURITY] verify_code() SECURITY DEFINER function added —
+--     validates OTP without exposing the codes table.
+-- =====================================================
+-- Changes from v2.2 (v3.0 original):
 --   - stock_qty >= 0 constraint (prevents overselling)
 --   - decrement_stock() RPC — atomic, called after order placement
 --   - cart_items.store_id column + auto-set trigger (eliminates
@@ -91,6 +120,9 @@ drop policy if exists "Public images are viewable" on storage.objects;
 drop policy if exists "Authenticated users can upload" on storage.objects;
 drop policy if exists "Authenticated users can update own images" on storage.objects;
 drop policy if exists "Authenticated users can delete own images" on storage.objects;
+-- v4: renamed storage policies
+drop policy if exists "Users update own uploads" on storage.objects;
+drop policy if exists "Users delete own uploads" on storage.objects;
 
 -- -----------------------------------------------------
 -- STEP 0: DROP EVERYTHING (CORRECT ORDER)
@@ -153,6 +185,9 @@ drop function if exists public.sync_user_role_to_metadata();
 drop function if exists public.decrement_stock(uuid, int);
 drop function if exists public.set_cart_item_store();
 drop function if exists public.stamp_deletion_request();
+-- v4 new functions
+drop function if exists public.get_all_profiles();
+drop function if exists public.verify_code(text, text, text);
 
 -- =====================================================
 -- STEP 1: CREATE TABLES
@@ -163,7 +198,7 @@ create table public.profiles (
   email                 text,
   full_name             text,
   phone                 text,
-  role                  text default 'customer' check (role in ('customer', 'admin', 'seller')),
+  role                  text default 'customer' check (role in ('customer', 'admin', 'seller', 'banned')),
   avatar_url            text,
   email_verified        boolean default false,
   -- v3: extended default — includes new_arrivals and push_enabled
@@ -291,6 +326,9 @@ create table public.verification_codes (
   user_id    uuid references auth.users on delete cascade,
   email      text not null,
   code       text not null,
+  type       text not null default 'signup'
+             check (type in ('signup', 'password_reset', 'email_change')),
+  used       boolean not null default false,
   expires_at timestamptz not null,
   created_at timestamptz default now()
 );
@@ -368,14 +406,17 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Helper: check admin role without RLS recursion
+-- Helper: check admin role without RLS recursion.
+-- SECURITY: reads raw_app_data (app_metadata) which is server-write-only.
+-- raw_user_meta_data can be written by the user via supabase.auth.updateUser()
+-- and must never be trusted for privilege checks.
 create or replace function public.is_admin()
 returns boolean as $$
 begin
   return exists (
     select 1 from auth.users
     where id = auth.uid()
-    and raw_user_meta_data->>'role' = 'admin'
+    and raw_app_data->>'role' = 'admin'
   );
 end;
 $$ language plpgsql stable security definer;
@@ -475,18 +516,81 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Sync profile role to auth.users metadata
+-- Sync profile role to auth.users app_metadata (server-write-only field).
+-- SECURITY: We write to raw_app_data so is_admin() reads from a field
+-- the user cannot overwrite via supabase.auth.updateUser().
 create or replace function public.sync_user_role_to_metadata()
 returns trigger as $$
 begin
   update auth.users
-  set raw_user_meta_data =
-    coalesce(raw_user_meta_data, '{}'::jsonb) ||
+  set raw_app_data =
+    coalesce(raw_app_data, '{}'::jsonb) ||
     jsonb_build_object('role', new.role)
   where id = new.id;
   return new;
 end;
 $$ language plpgsql security definer;
+
+-- =====================================================
+-- v4 NEW FUNCTIONS (Security Hardened)
+-- =====================================================
+
+-- Admin-only full profile read — replaces the removed
+-- "Allow authenticated read all profiles" policy.
+-- Only callable when is_admin() returns true; returns empty
+-- set to non-admins without raising an error.
+create or replace function public.get_all_profiles()
+returns setof public.profiles
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select * from public.profiles
+  where public.is_admin()
+  order by created_at desc;
+$$;
+
+grant execute on function public.get_all_profiles() to authenticated;
+
+-- OTP verification — clients call this RPC instead of reading
+-- verification_codes directly. Marks the code as used atomically.
+-- Returns true on success, false on invalid/expired/already-used code.
+create or replace function public.verify_code(
+  p_email text,
+  p_code  text,
+  p_type  text default 'signup'
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  select id into v_id
+  from   public.verification_codes
+  where  email      = p_email
+    and  code       = p_code
+    and  type       = p_type
+    and  used       = false
+    and  expires_at > now()
+  limit 1;
+
+  if v_id is null then
+    return false;
+  end if;
+
+  update public.verification_codes
+  set    used = true
+  where  id   = v_id;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.verify_code(text, text, text) to authenticated, anon;
 
 -- =====================================================
 -- v3 NEW FUNCTIONS
@@ -644,10 +748,17 @@ create policy "admin manage profiles"
   to authenticated
   using (public.is_admin());
 
-create policy "Allow authenticated read all profiles"
+-- SECURITY: "Allow authenticated read all profiles" has been intentionally
+-- removed. It exposed every user's PII (phone, email, role) to all
+-- authenticated users. Admin reads now go through get_all_profiles() RPC.
+-- Sellers who need to read customer names for orders get only what the
+-- order join exposes — not the full profiles table.
+
+-- Admins can see profiles flagged for deletion (for the deletion dashboard)
+create policy "admin view deletion requests"
   on public.profiles for select
   to authenticated
-  using (true);
+  using (public.is_admin() and deletion_requested = true);
 
 -- CATEGORIES
 create policy "categories public read"
@@ -874,11 +985,10 @@ create policy "customers delete own reviews"
   using (auth.uid() = reviewer_id);
 
 -- VERIFICATION_CODES
-create policy "verification codes service"
-  on public.verification_codes for all
-  to authenticated, anon
-  using (true)
-  with check (true);
+-- SECURITY: No direct client access to this table. All OTP operations
+-- go through the verify_code() SECURITY DEFINER RPC which validates
+-- and marks codes as used atomically without exposing raw code values.
+-- Inserts are done server-side (Supabase Auth or Edge Functions only).
 
 -- =====================================================
 -- STEP 7: STORAGE POLICIES
@@ -889,20 +999,34 @@ create policy "Public images are viewable"
   to anon, authenticated
   using (bucket_id in ('images', 'products', 'avatars', 'stores'));
 
+-- SECURITY: Upload path must start with the user's own UUID to prevent
+-- users from writing into each other's folders.
 create policy "Authenticated users can upload"
   on storage.objects for insert
   to authenticated
-  with check (bucket_id in ('images', 'products', 'avatars', 'stores'));
+  with check (
+    bucket_id in ('images', 'products', 'avatars', 'stores')
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
-create policy "Authenticated users can update own images"
+-- SECURITY: Update and delete scoped to file owner (set by Supabase on insert).
+-- Previously used bucket_id only — any authenticated user could overwrite
+-- any other user's uploaded file.
+create policy "Users update own uploads"
   on storage.objects for update
   to authenticated
-  using (bucket_id in ('images', 'products', 'avatars', 'stores'));
+  using (
+    bucket_id in ('images', 'products', 'avatars', 'stores')
+    and owner = auth.uid()
+  );
 
-create policy "Authenticated users can delete own images"
+create policy "Users delete own uploads"
   on storage.objects for delete
   to authenticated
-  using (bucket_id in ('images', 'products', 'avatars', 'stores'));
+  using (
+    bucket_id in ('images', 'products', 'avatars', 'stores')
+    and owner = auth.uid()
+  );
 
 -- =====================================================
 -- STEP 8: INDEXES
@@ -1048,5 +1172,5 @@ end $$;
 -- alter publication supabase_realtime add table public.order_status_history;
 
 -- =====================================================
--- END OF COMPLETE SCHEMA (v3.0)
+-- END OF COMPLETE SCHEMA (v4.0 - Security Hardened)
 -- =====================================================

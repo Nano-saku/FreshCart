@@ -24,7 +24,6 @@ import {
   Phone,
   Lock,
 } from "lucide-react-native";
-import { logger } from "../../src/lib/logger";
 
 type UserRole = "customer" | "seller";
 
@@ -117,7 +116,7 @@ export default function RegisterScreen() {
     if (resendTimer > 0) return;
     const { error } = await supabase.auth.resend({ type: "signup", email });
     if (error) {
-      logger.error(error.message);
+      Alert.alert("Error", error.message);
       return;
     }
     startResendTimer();

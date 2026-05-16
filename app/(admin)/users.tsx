@@ -54,7 +54,6 @@ export default function AdminUsersScreen() {
       .from("profiles")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false });
-    logger.log()
 
     if (error) {
       logger.error("Error fetching users:", error);
