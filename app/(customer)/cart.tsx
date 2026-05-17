@@ -24,8 +24,6 @@ export default function CartScreen() {
   }, []);
 
   const subtotal = total();
-  const deliveryFee = items.length > 0 ? 5.0 : 0;
-  const grandTotal = subtotal + deliveryFee;
 
   // Memoize renderItem for cart list performance
   const renderCartItem = useCallback(
@@ -67,15 +65,6 @@ export default function CartScreen() {
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Subtotal</Text>
                   <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>${subtotal.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery Fee</Text>
-                  <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>${deliveryFee.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.divider, { borderTopColor: theme.divider }]} />
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.totalLabel, { color: theme.textPrimary }]}>Total</Text>
-                  <Text style={[styles.totalVal, { color: theme.primary }]}>${grandTotal.toFixed(2)}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push("/(customer)/checkout")}

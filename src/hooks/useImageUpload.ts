@@ -1,6 +1,5 @@
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
-import { File } from "expo-file-system";
 import { supabase } from "../lib/supabase";
 import { Alert } from "react-native";
 import { logger } from "../lib/logger";
@@ -47,47 +46,49 @@ export function useImageUpload(bucket: string = "images") {
 
   const uploadToSupabase = async (uri: string, path?: string) => {
     setUploading(true);
-    
+
     try {
-      // Get current user
       const user = useAuthStore.getState().user;
       if (!user) {
         Alert.alert("Error", "You must be logged in to upload images");
         return null;
       }
 
+      // Fetch the image from the local URI
       const response = await fetch(uri);
-      const blob = await response.blob();
-
-      const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-      if (!ALLOWED_TYPES.includes(blob.type)) {
-        Alert.alert('Invalid file', 'Only JPEG, PNG, and WebP allowed.');
-        return null;
+      if (!response.ok) {
+        throw new Error(`Failed to read image from device (status ${response.status})`);
       }
 
-      // CRITICAL FIX: Path MUST start with user.id to satisfy RLS policy
+      // Convert to ArrayBuffer — this bypasses React Native's Blob polyfill
+      // incompatibility with Supabase storage's FormData multipart upload.
+      // Sending raw ArrayBuffer with an explicit content-type is the reliable
+      // path for RN → Supabase storage uploads.
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Derive content-type from the URI extension (blob.type is unreliable in RN)
       const ext = uri.split(".").pop()?.toLowerCase().split("?")[0] || "jpg";
+      const contentTypeMap: Record<string, string> = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        webp: "image/webp",
+      };
+      const contentType = contentTypeMap[ext] ?? "image/jpeg";
+
+      // Build the storage path: <userId>/<subfolder?>/<filename>
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(7);
       const fileName = `${timestamp}-${random}.${ext}`;
-      
-      // Create path that starts with user ID
-      let filePath: string;
-      if (path) {
-        // If path is provided (like 'products'), use it as subfolder under user ID
-        filePath = `${user.id}/${path}/${fileName}`;
-      } else {
-        // Otherwise just put in user's root folder
-        filePath = `${user.id}/${fileName}`;
-      }
+      const filePath = path
+        ? `${user.id}/${path}/${fileName}`
+        : `${user.id}/${fileName}`;
 
-      console.log('Uploading to path:', filePath); // Debug log
-
-      const contentType = ext === "png" ? "image/png" : "image/jpeg";
+      logger.log("Uploading to path:", filePath);
 
       const { data, error } = await supabase.storage
         .from(bucket)
-        .upload(filePath, blob, {
+        .upload(filePath, arrayBuffer, {
           contentType,
           upsert: false,
         });
