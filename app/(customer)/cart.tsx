@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { ShoppingBag, ChevronRight } from "lucide-react-native";
 export default function CartScreen() {
   const { theme } = useTheme();
   const { items, loading, fetchCart, removeItem, updateQuantity, total } = useCartStore();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   useEffect(() => {
     fetchCart();
@@ -26,6 +26,18 @@ export default function CartScreen() {
   const subtotal = total();
   const deliveryFee = items.length > 0 ? 5.0 : 0;
   const grandTotal = subtotal + deliveryFee;
+
+  // Memoize renderItem for cart list performance
+  const renderCartItem = useCallback(
+    ({ item }: { item: any }) => (
+      <CartItem
+        item={item}
+        onUpdateQuantity={updateQuantity}
+        onRemove={removeItem}
+      />
+    ),
+    [updateQuantity, removeItem]
+  );
 
   return (
     <AppScreen>
@@ -43,14 +55,11 @@ export default function CartScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
+          renderItem={renderCartItem}
+          maxToRenderPerBatch={5}
+          windowSize={3}
+          removeClippedSubviews={true}
           contentContainerStyle={{ paddingBottom: 20 }}
-          renderItem={({ item }) => (
-            <CartItem
-              item={item}
-              onUpdateQuantity={updateQuantity}
-              onRemove={removeItem}
-            />
-          )}
           ListFooterComponent={() =>
             items.length > 0 ? (
               <View style={[styles.summaryCard, { backgroundColor: theme.surface, shadowColor: theme.shadowColor }]}>

@@ -35,8 +35,8 @@ function RootLayoutNav() {
         const profile = await fetchProfile(session.user.id); // await so role is ready before routing
         setLoading(false);
         // Route to the correct dashboard immediately on startup
-        if (profile?.role === "admin")        router.replace("/(admin)");
-        else if (profile?.role === "seller")  router.replace("/(seller)");
+        if (profile?.role === "admin") router.replace("/(admin)");
+        else if (profile?.role === "seller") router.replace("/(seller)");
         // customers: already on (customer) by default — no redirect needed
       } else {
         setSession(null);
@@ -66,8 +66,8 @@ function RootLayoutNav() {
     if (loading) return;
 
     const inSellerGroup = segments[0] === "(seller)";
-    const inAdminGroup  = segments[0] === "(admin)";
-    const inAuthGroup   = segments[0] === "(auth)";
+    const inAdminGroup = segments[0] === "(admin)";
+    const inAuthGroup = segments[0] === "(auth)";
 
     const { user, profile } = useAuthStore.getState();
 
@@ -87,9 +87,9 @@ function RootLayoutNav() {
 
   // Sync, no network call — uses the role already stored in authStore
   const routeByRole = (role: string) => {
-    if (role === "seller")      router.replace("/(seller)");
-    else if (role === "admin")  router.replace("/(admin)");
-    else                        router.replace("/(customer)");
+    if (role === "seller") router.replace("/(seller)");
+    else if (role === "admin") router.replace("/(admin)");
+    else router.replace("/(customer)");
   };
 
   if (loading) {
@@ -104,11 +104,11 @@ function RootLayoutNav() {
     <>
       <StatusBar style="auto" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
         <Stack.Screen name="(seller)" options={{ headerShown: false }} />
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="(customer)" options={{ headerShown: false }} />
       </Stack>
     </>
   );

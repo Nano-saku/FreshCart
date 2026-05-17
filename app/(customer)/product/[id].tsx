@@ -9,6 +9,7 @@ import { useTheme } from "../../../src/contexts/ThemeContext";
 import { useAuthStore } from "../../../src/stores/authStore";
 import { useCartStore } from "../../../src/stores/cartStore";
 import { supabase } from "../../../src/lib/supabase";
+import { useMemo } from 'react';
 import {
   ArrowLeft, Plus, Minus, ShoppingCart,
   Star, MapPin, Store,
@@ -19,7 +20,7 @@ export default function ProductDetailScreen() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
   const addItem = useCartStore((s) => s.addItem);
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [product, setProduct] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -104,8 +105,8 @@ export default function ProductDetailScreen() {
           {p.image_url
             ? <Image source={{ uri: p.image_url }} style={styles.image} resizeMode="cover" />
             : <View style={[styles.image, styles.imagePlaceholder]}>
-                <ShoppingCart size={48} color={theme.textMuted} />
-              </View>}
+              <ShoppingCart size={48} color={theme.textMuted} />
+            </View>}
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={22} color={theme.textPrimary} />
           </TouchableOpacity>
@@ -237,11 +238,11 @@ export default function ProductDetailScreen() {
           {adding
             ? <ActivityIndicator color="#fff" size="small" />
             : <>
-                <ShoppingCart size={20} color="#fff" />
-                <Text style={styles.addBtnText}>
-                  {outOfStock ? "Out of Stock" : "Add to Cart"}
-                </Text>
-              </>}
+              <ShoppingCart size={20} color="#fff" />
+              <Text style={styles.addBtnText}>
+                {outOfStock ? "Out of Stock" : "Add to Cart"}
+              </Text>
+            </>}
         </TouchableOpacity>
       </View>
     </AppScreen>

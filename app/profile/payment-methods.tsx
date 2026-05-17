@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { AppScreen } from "../../src/components/AppScreen";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { ChevronLeft, Banknote, CreditCard, Clock } from "lucide-react-native";
+import { useMemo } from 'react';
 
 const METHODS = [
   {
@@ -23,7 +24,7 @@ const METHODS = [
 
 export default function PaymentMethodsScreen() {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <AppScreen>

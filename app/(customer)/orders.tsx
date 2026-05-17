@@ -16,10 +16,11 @@ import { OrderStatusBadge } from "../../src/components/OrderStatus";
 import { Package, Clock, ChevronRight } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { logger } from "../../src/lib/logger";
+import { useMemo } from 'react';
 
 export default function OrdersScreen() {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

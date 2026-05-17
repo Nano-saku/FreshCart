@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
-  Image,
   Animated,
 } from "react-native";
+import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../contexts/ThemeContext";
@@ -68,7 +68,19 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
             store.longitude
           );
         }
-        const rating = 4 + Math.random();
+
+        // Use stable rating based on store ID (replaces random)
+        // TODO: Replace with real ratings from store_ratings materialized view
+        const hashCode = (str: string) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash = hash & hash;
+          }
+          return Math.abs(hash);
+        };
+        const rating = 4.0 + (hashCode(store.id) % 100) / 100; // 4.0-5.0 range
+
         return { ...store, distance, rating };
       });
 
@@ -103,7 +115,7 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
   const handlePressIn = (id: string) => setPressedCard(id);
   const handlePressOut = () => setPressedCard(null);
 
-  const styles = createStyles(theme, isDark);
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   if (isLoading) {
     return (
@@ -206,7 +218,13 @@ export function StoreSelector({ onSelect, selectedStore, userLocation }: StoreSe
                 {/* Logo */}
                 <View style={[styles.logoContainer, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
                   {store.logo_url ? (
-                    <Image source={{ uri: store.logo_url }} style={styles.logoImage} />
+                    <Image
+                      source={{ uri: store.logo_url }}
+                      style={styles.logoImage}
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                    />
                   ) : (
                     <View style={styles.logoPlaceholder}>
                       <Store size={24} color={theme.primary} />

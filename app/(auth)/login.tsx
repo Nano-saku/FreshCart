@@ -21,12 +21,14 @@ import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, Lock, Fingerprint, ArrowRight } from "lucide-react-native";
 import { logger } from "../../src/lib/logger";
 import { checkRateLimit } from "../../src/lib/rateLimiter";
+import { useMemo } from 'react';
 
 const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
 const BIOMETRIC_UNLOCKED_KEY = "biometric_unlocked";
 
 export default function LoginScreen() {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { restoreSessionFromToken, justSoftLoggedOut } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -184,7 +186,6 @@ export default function LoginScreen() {
     else router.replace("/(admin)");
   };
 
-  const styles = createStyles(theme);
 
   if (checkingSession) {
     return (

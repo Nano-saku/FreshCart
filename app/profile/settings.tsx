@@ -9,11 +9,12 @@ import { useTheme } from "../../src/contexts/ThemeContext";
 import { useAuthStore } from "../../src/stores/authStore";
 import { supabase } from "../../src/lib/supabase";
 import { ChevronLeft, ChevronRight, Globe, Info, HelpCircle, FileText, Trash2, Shield } from "lucide-react-native";
+import { useMemo } from 'react';
 
 export default function SettingsScreen() {
   const { theme } = useTheme();
   const { user } = useAuthStore();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [submitting, setSubmitting] = useState(false);
 
   const handleDeleteAccount = () => {

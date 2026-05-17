@@ -1,5 +1,6 @@
 import { StyleSheet, View, ViewProps } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { useMemo } from 'react';
 
 interface ThemeCardProps extends ViewProps {
   padding?: number;
@@ -16,8 +17,8 @@ export function ThemeCard({
   ...props
 }: ThemeCardProps) {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
-  
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View
       style={[

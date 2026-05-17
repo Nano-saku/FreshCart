@@ -11,6 +11,7 @@ import {
 import { Camera, Image as ImageIcon, X } from "lucide-react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import { useImageUpload } from "../hooks/useImageUpload";
+import { useMemo } from 'react';
 
 interface ImagePickerButtonProps {
   currentImage?: string | null;
@@ -29,7 +30,7 @@ export function ImagePickerButton({
 }: ImagePickerButtonProps) {
   const { theme, isDark } = useTheme();
   const { uploadImage, uploading } = useImageUpload(bucket);
-  const styles = createStyles(theme, isDark);
+  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
   const handlePick = async (source: "camera" | "gallery") => {
     const url = await uploadImage(source, path);

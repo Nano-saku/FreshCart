@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  RefreshControl
 } from "react-native";
 import { AppScreen } from "../../src/components/AppScreen";
 import { BlurView } from "expo-blur";
@@ -15,7 +16,8 @@ import { colors } from "../../src/constants/colors";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { PackageSearch } from "lucide-react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useMemo } from 'react';
 
 const NEXT_STATUS: Record<string, string> = {
   pending: "confirmed",
@@ -29,11 +31,14 @@ export default function AdminOrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasStore, setHasStore] = useState(true);
+  const [storeId, setStoreId] = useState<string | null>(null);
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const fetchOrders = async () => {
     if (!profile?.id) return;
+
+    setLoading(true);
 
     // First find the seller's store
     const { data: storeData } = await supabase
@@ -47,7 +52,9 @@ export default function AdminOrdersScreen() {
       setLoading(false);
       return;
     }
+
     setHasStore(true);
+    setStoreId(storeData.id);
 
     const { data } = await supabase
       .from("orders")
@@ -64,6 +71,15 @@ export default function AdminOrdersScreen() {
   useEffect(() => {
     fetchOrders();
   }, [profile]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (profile?.id) {
+        fetchOrders();
+      }
+    }, [profile])
+  );
 
   const updateStatus = async (id: string, newStatus: string) => {
     await supabase.from("orders").update({ status: newStatus }).eq("id", id);
@@ -88,7 +104,7 @@ export default function AdminOrdersScreen() {
           <Text style={styles.noStoreText}>
             Please setup your store profile before managing orders.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.createStoreBtn}
             onPress={() => router.push("/(seller)/store-settings")}
           >
@@ -100,6 +116,13 @@ export default function AdminOrdersScreen() {
           data={orders}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={fetchOrders}
+              tintColor={theme.primary}
+            />
+          }
           renderItem={({ item }) => (
             <BlurView intensity={30} tint="light" style={styles.card}>
               <View style={styles.cardInner}>

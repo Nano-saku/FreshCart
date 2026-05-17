@@ -14,6 +14,7 @@ import {
   TrendingUp, Star, Truck, ClipboardList, Store,
   Eye, MessageCircle, Gift, Archive, Tag, LogIn, UserPlus
 } from "lucide-react-native";
+import { useMemo } from 'react';
 
 export default function ProfileScreen() {
   const { theme, isDark, toggleTheme, themeMode } = useTheme();
@@ -77,7 +78,7 @@ export default function ProfileScreen() {
   };
 
   const roleStyle = getRoleBadgeStyle();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (!user) {
     return (

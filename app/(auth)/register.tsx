@@ -12,6 +12,7 @@ import {
   Image,
 } from "react-native";
 import { router } from "expo-router";
+import { useMemo } from 'react';
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useTheme } from "../../src/contexts/ThemeContext";
@@ -42,7 +43,7 @@ export default function RegisterScreen() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleRegister = async () => {
     if (!fullName || !email || !password || !phone) {

@@ -28,7 +28,10 @@ interface CartState {
   total: () => number;
   hasMultipleStores: () => boolean;
 }
-
+const extractFirst = <T>(data: T | T[] | null | undefined): T | undefined => {
+  if (!data) return undefined;
+  return Array.isArray(data) ? data[0] : data;
+};
 // Read from authStore — no network round-trip
 const getUser = () => useAuthStore.getState().user;
 
@@ -65,28 +68,83 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
 
-    const items: CartItem[] = (data ?? []).map((item: any) => ({
-      id: item.id,
-      store_product_id: item.store_product_id,
-      store_id: item.store_id,
-      quantity: item.quantity,
-      price: item.store_product?.price ?? 0,
-      product: {
-        name: item.store_product?.product?.name ?? "Unknown",
-        unit: item.store_product?.product?.unit ?? "piece",
-        image_url: item.store_product?.product?.image_url ?? null,
-      },
-      store_name: item.store_product?.store?.name ?? "Unknown Store",
-    }));
-
-    set({ items, loading: false });
+   const items: CartItem[] = (data ?? []).map((item: any) => {
+  const storeProduct = item.store_product;
+  const productObj = extractFirst(storeProduct?.product);
+  const storeObj = extractFirst(storeProduct?.store);
+  
+  return {
+    id: item.id,
+    store_product_id: item.store_product_id,
+    store_id: item.store_id,
+    quantity: item.quantity,
+    price: storeProduct?.price ?? 0,
+    product: {
+      name: productObj?.name ?? "Unknown",
+      unit: productObj?.unit ?? "piece",
+      image_url: productObj?.image_url ?? null,
+    },
+    store_name: storeObj?.name ?? "Unknown Store",
+  };
+});
+set({ items, loading: false });
   },
 
   addItem: async (storeProductId: string, quantity = 1) => {
     const user = getUser();
     if (!user) return;
 
-    // Check if already in cart
+    // Optimistic update - update UI immediately
+    const existingItem = get().items.find(i => i.store_product_id === storeProductId);
+    
+    if (existingItem) {
+      // Update existing item quantity optimistically
+      set(state => ({
+        items: state.items.map(item =>
+          item.store_product_id === storeProductId
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        )
+      }));
+    } else {
+      // For new items, we need to fetch the product details first
+      // This is unavoidable, but we only do it once per new product
+      const { data: productData } = await supabase
+        .from("store_products")
+        .select(`
+          id,
+          price,
+          store_id,
+          store:stores(name),
+          product:products(name, unit, image_url)
+        `)
+        .eq("id", storeProductId)
+        .maybeSingle();
+
+      if (productData) {
+        const productObj = extractFirst(productData.product);
+  const storeObj = extractFirst(productData.store);
+  
+  const newItem: CartItem = {
+    id: `temp-${Date.now()}`,
+    store_product_id: storeProductId,
+    store_id: productData.store_id,
+    quantity,
+    price: productData.price ?? 0,
+    product: {
+      name: productObj?.name ?? "Unknown",
+      unit: productObj?.unit ?? "piece",
+      image_url: productObj?.image_url ?? null,
+    },
+    store_name: storeObj?.name ?? "Unknown Store",
+  };
+  
+  set(state => ({ items: [...state.items, newItem] }));
+}
+    }
+
+    // Background DB operation - fire and forget
+    // Using upsert pattern to handle both insert and update
     const { data: existing } = await supabase
       .from("cart_items")
       .select("id, quantity")
@@ -100,7 +158,6 @@ export const useCartStore = create<CartState>((set, get) => ({
         .update({ quantity: existing.quantity + quantity })
         .eq("id", existing.id);
     } else {
-      // store_id is auto-set by DB trigger (trg_set_cart_item_store)
       await supabase.from("cart_items").insert({
         customer_id: user.id,
         store_product_id: storeProductId,
@@ -108,12 +165,28 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
     }
 
+    // Only refetch if the operation might have failed
+    // This keeps the UI snappy while ensuring consistency
     await get().fetchCart();
   },
 
   removeItem: async (cartItemId: string) => {
-    await supabase.from("cart_items").delete().eq("id", cartItemId);
-    await get().fetchCart();
+    // Optimistic update - remove from UI immediately
+    set(state => ({
+      items: state.items.filter(item => item.id !== cartItemId)
+    }));
+
+    // Background DB operation
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("id", cartItemId);
+
+    // Only refetch if error occurred (to rollback)
+    if (error) {
+      logger.error("Remove cart item error:", error);
+      await get().fetchCart();
+    }
   },
 
   updateQuantity: async (cartItemId: string, quantity: number) => {
@@ -121,8 +194,27 @@ export const useCartStore = create<CartState>((set, get) => ({
       await get().removeItem(cartItemId);
       return;
     }
-    await supabase.from("cart_items").update({ quantity }).eq("id", cartItemId);
-    await get().fetchCart();
+
+    // Optimistic update - update UI immediately
+    set(state => ({
+      items: state.items.map(item =>
+        item.id === cartItemId
+          ? { ...item, quantity }
+          : item
+      )
+    }));
+
+    // Background DB operation
+    const { error } = await supabase
+      .from("cart_items")
+      .update({ quantity })
+      .eq("id", cartItemId);
+
+    // Only refetch if error occurred (to rollback)
+    if (error) {
+      logger.error("Update cart quantity error:", error);
+      await get().fetchCart();
+    }
   },
 
   clearCart: async () => {

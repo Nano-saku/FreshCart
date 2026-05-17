@@ -14,6 +14,7 @@ import {
   ChevronLeft, MapPin, Phone, Plus, Trash2,
   Edit3, CheckCircle2, Home, Briefcase, MoreHorizontal,
 } from "lucide-react-native";
+import { useMemo } from 'react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type AddressLabel = "Home" | "Work" | "Other";
@@ -53,7 +54,7 @@ const emptyForm = (): AddressFormData => ({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function AddressesScreen() {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { user } = useAuthStore();
 
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);

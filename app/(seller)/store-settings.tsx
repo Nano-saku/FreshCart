@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,22 +11,24 @@ import {
   Image,
 } from "react-native";
 import { AppScreen } from "../../src/components/AppScreen";
-import { BlurView } from "expo-blur";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { Store, MapPin, Save, ChevronLeft, Camera } from "lucide-react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useImageUpload } from "../../src/hooks/useImageUpload";
+import { useMemo } from 'react';
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function StoreSettings() {
   const { profile } = useAuthStore();
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [store, setStore] = useState<any>(null);
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     name: "",
@@ -37,12 +39,6 @@ export default function StoreSettings() {
   });
 
   const { uploadImage, uploading } = useImageUpload("images");
-
-  useEffect(() => {
-    if (profile?.id) {
-      fetchStore();
-    }
-  }, [profile]);
 
   const fetchStore = async () => {
     setLoading(true);
@@ -64,6 +60,21 @@ export default function StoreSettings() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchStore();
+    }
+  }, [profile]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (profile?.id) {
+        fetchStore();
+      }
+    }, [profile])
+  );
 
   const handleImagePick = async () => {
     Alert.alert("Upload Logo", "Choose image source", [
@@ -112,8 +123,12 @@ export default function StoreSettings() {
         });
         if (error) throw error;
         Alert.alert("Success", "Store created successfully");
-        fetchStore();
       }
+
+      // Invalidate store queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["seller-store", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+
       router.back();
     } catch (err: any) {
       Alert.alert("Error", err.message);
@@ -142,8 +157,8 @@ export default function StoreSettings() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.container}>
-        <BlurView intensity={30} tint="light" style={styles.card}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
           <TouchableOpacity style={styles.imagePickerContainer} onPress={handleImagePick} disabled={uploading}>
             {form.logo_url ? (
               <Image source={{ uri: form.logo_url }} style={styles.storeImage} />
@@ -226,13 +241,14 @@ export default function StoreSettings() {
               </>
             )}
           </TouchableOpacity>
-        </BlurView>
+        </View>
       </ScrollView>
     </AppScreen>
   );
+
 }
 
-const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: "center",
@@ -269,7 +285,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     padding: 24,
     borderWidth: 1,
     borderColor: theme.border,
-    backgroundColor: theme.surface + "80",
+    backgroundColor: theme.surface,
   },
   imagePickerContainer: {
     alignSelf: "center",
@@ -287,11 +303,11 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.primary + "15",
+    backgroundColor: theme.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: theme.primary + "30",
+    borderColor: theme.border,
   },
   editIconContainer: {
     position: "absolute",
@@ -372,11 +388,6 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     justifyContent: "center",
     gap: 12,
     marginTop: 8,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   saveBtnText: {
     color: theme.surface,

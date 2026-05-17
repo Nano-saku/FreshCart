@@ -14,6 +14,7 @@ import { supabase } from "../../../src/lib/supabase";
 import { colors } from "../../../src/constants/colors";
 import { useTheme } from "../../../src/contexts/ThemeContext";
 import { logger } from "../../../src/lib/logger";
+import { useMemo } from 'react';
 import {
   OrderStatusSteps,
   OrderStatusBadge,
@@ -34,7 +35,7 @@ export default function OrderTrackingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const fetchOrder = async () => {
     try {

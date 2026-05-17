@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import { Minus, Plus, Trash2 } from "lucide-react-native";
-
+import { useMemo } from 'react';
 interface CartItemProps {
   item: {
     id: string;
@@ -20,7 +20,7 @@ interface CartItemProps {
 
 export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.card}>

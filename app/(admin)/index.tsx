@@ -12,10 +12,11 @@ import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { ShoppingBag, Package, Store, TrendingUp } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { useMemo } from 'react';
 
 export default function AdminDashboard() {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [stats, setStats] = useState({
     orders: 0,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
@@ -38,7 +38,7 @@ export default function CheckoutScreen() {
   const { items, total, clearCart } = useCartStore();
   const { user } = useAuthStore();
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");

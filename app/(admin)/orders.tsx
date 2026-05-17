@@ -10,6 +10,7 @@ import { useTheme } from "../../src/contexts/ThemeContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Package, Clock, CheckCircle, XCircle, Truck } from "lucide-react-native";
 import { logger } from "../../src/lib/logger"
+import { useMemo } from 'react';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: "Pending", color: "#F77F00", icon: Clock },
@@ -31,7 +32,7 @@ const FILTER_TABS = ["all", "pending", "confirmed", "preparing", "out_for_delive
 
 export default function AdminOrdersScreen() {
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState("all");
 

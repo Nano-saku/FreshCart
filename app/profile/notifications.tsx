@@ -7,7 +7,7 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { useNotificationPrefs } from "../../src/hooks/useNotificationPrefs";
 import { ChevronLeft, Bell, Tag, Package, BellOff } from "lucide-react-native";
-
+import { useMemo } from 'react';
 const PREF_ITEMS = [
   {
     key: "orderUpdates" as const,
@@ -32,7 +32,7 @@ const PREF_ITEMS = [
 export default function NotificationsScreen() {
   const { theme } = useTheme();
   const { prefs, loading, updatePref } = useNotificationPrefs();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <AppScreen>

@@ -1,22 +1,23 @@
 import {
-  View, Text, TouchableOpacity, Image,
+  View, Text, TouchableOpacity,
   StyleSheet, Animated,
 } from "react-native";
+import { Image } from "expo-image";
+import { memo, useState, useRef, useMemo } from "react";
 import { useCartStore } from "../stores/cartStore";
 import { useTheme } from "../contexts/ThemeContext";
 import { router } from "expo-router";
 import { Plus, ShoppingCart } from "lucide-react-native";
-import { useState, useRef } from "react";
 import { logger } from "../lib/logger";
 
 const CURRENCY = "₱";
 
-export function ProductCard({ item }: { item: any }) {
+export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
   const { theme } = useTheme();
   const addItem = useCartStore((s) => s.addItem);
   const [adding, setAdding] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleAdd = async () => {
     setAdding(true);
@@ -47,7 +48,13 @@ export function ProductCard({ item }: { item: any }) {
       {/* Image */}
       <View style={styles.imageContainer}>
         {product.image_url
-          ? <Image source={{ uri: product.image_url }} style={styles.image} />
+          ? <Image
+            source={{ uri: product.image_url }}
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
           : <View style={styles.imagePlaceholder}>
             <ShoppingCart size={32} color={theme.textMuted} />
           </View>}
@@ -98,7 +105,7 @@ export function ProductCard({ item }: { item: any }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
   card: { flex: 1, margin: 6, borderRadius: 16, backgroundColor: theme.surface, overflow: "hidden", shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8, elevation: 3 },

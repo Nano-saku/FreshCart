@@ -4,11 +4,12 @@ import { Home, Search, ShoppingCart, ClipboardList, User } from "lucide-react-na
 import { colors } from "../../src/constants/colors";
 import { useCartStore } from "../../src/stores/cartStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { useMemo } from 'react';
 
 export default function CustomerLayout() {
   const items = useCartStore((s) => s.items);
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <Tabs

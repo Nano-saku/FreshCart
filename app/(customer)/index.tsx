@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Dimensions,
-  Image,
-  ScrollView,
 } from "react-native";
+import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
@@ -22,19 +21,20 @@ import { Search, Bell, ShoppingBag, ChevronRight } from "lucide-react-native";
 
 const { width } = Dimensions.get("window");
 
-const CATEGORIES = [
-  { name: "Vegetables", icon: "🥬", color: "#4CAF50" },
-  { name: "Fruits", icon: "🍎", color: "#FF9800" },
-  { name: "Meats", icon: "🥩", color: "#F44336" },
-  { name: "Fish", icon: "🐟", color: "#2196F3" },
-  { name: "Eggs", icon: "🥚", color: "#FFC107" },
-  { name: "Breads", icon: "🍞", color: "#795548" },
-  { name: "Nuts", icon: "🥜", color: "#8D6E63" },
-  { name: "Honey", icon: "🍯", color: "#FFB300" },
-  { name: "Wheat", icon: "🌾", color: "#A1887F" },
-  { name: "Cheese", icon: "🧀", color: "#FFC107" },
-  { name: "Milk", icon: "🥛", color: "#90CAF9" },
-  { name: "Pasta", icon: "🍝", color: "#FFCC80" },
+// Default categories (will be used as fallback)
+const DEFAULT_CATEGORIES = [
+  { id: "1", name: "Vegetables", icon: "🥬", color: "#4CAF50" },
+  { id: "2", name: "Fruits", icon: "🍎", color: "#FF9800" },
+  { id: "3", name: "Meats", icon: "🥩", color: "#F44336" },
+  { id: "4", name: "Fish", icon: "🐟", color: "#2196F3" },
+  { id: "5", name: "Eggs", icon: "🥚", color: "#FFC107" },
+  { id: "6", name: "Breads", icon: "🍞", color: "#795548" },
+  { id: "7", name: "Nuts", icon: "🥜", color: "#8D6E63" },
+  { id: "8", name: "Honey", icon: "🍯", color: "#FFB300" },
+  { id: "9", name: "Wheat", icon: "🌾", color: "#A1887F" },
+  { id: "10", name: "Cheese", icon: "🧀", color: "#FFC107" },
+  { id: "11", name: "Milk", icon: "🥛", color: "#90CAF9" },
+  { id: "12", name: "Pasta", icon: "🍝", color: "#FFCC80" },
 ];
 
 export default function HomeScreen() {
@@ -42,6 +42,33 @@ export default function HomeScreen() {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // Fetch categories from database
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id, name, icon")
+      .order("name");
+
+    if (!error && data && data.length > 0) {
+      // Map database categories with colors
+      const mappedCategories = data.map((cat, index) => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon || "📦",
+        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`, // Random color, or use a color map
+      }));
+      setCategories(mappedCategories);
+    }
+    setLoadingCategories(false);
+  };
 
   const {
     data: products,
@@ -53,9 +80,14 @@ export default function HomeScreen() {
     queryFn: async () => {
       let query = supabase
         .from("store_products")
-        .select(
-          `*, product:products(*, category:categories(name)), store:stores(name, logo_url)`,
+        .select(`
+        *,
+        store:stores(name, logo_url),
+        product:products!inner (
+          *,
+          category:categories(id, name, icon)
         )
+      `)
         .eq("is_available", true)
         .gt("stock_qty", 0);
 
@@ -64,13 +96,16 @@ export default function HomeScreen() {
       }
 
       if (selectedCategory) {
-        query = query.ilike("product.category.name", selectedCategory);
+        // The key is using the !inner join and filtering on the nested table
+        query = query.eq("product.category_id", selectedCategory);
       }
 
       const { data, error } = await query
         .order("created_at", { ascending: false })
         .limit(50);
+
       if (error) throw error;
+
       return data ?? [];
     },
   });
@@ -78,19 +113,20 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
+    await fetchCategories();
     setRefreshing(false);
   }, [refetch]);
 
-  const renderCategoryItem = ({ item }: { item: (typeof CATEGORIES)[0] }) => {
-    const styles = createStyles(theme);
+  const renderCategoryItem = ({ item }: { item: typeof categories[0] }) => {
+    const isSelected = selectedCategory === item.id;
     return (
       <TouchableOpacity
         style={[
           styles.categoryItem,
-          selectedCategory === item.name && styles.categoryItemActive,
+          isSelected && styles.categoryItemActive,
         ]}
         onPress={() =>
-          setSelectedCategory(selectedCategory === item.name ? null : item.name)
+          setSelectedCategory(isSelected ? null : item.id)
         }
         activeOpacity={0.8}
       >
@@ -102,7 +138,7 @@ export default function HomeScreen() {
         <Text
           style={[
             styles.categoryName,
-            selectedCategory === item.name && styles.categoryNameActive,
+            isSelected && styles.categoryNameActive,
           ]}
         >
           {item.name}
@@ -111,45 +147,204 @@ export default function HomeScreen() {
     );
   };
 
-  const styles = createStyles(theme);
+  const renderProduct = useCallback(
+    ({ item }: { item: any }) => <ProductCard item={item} />,
+    []
+  );
+
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // See All handlers
+  const handleSeeAllCategories = () => {
+    router.push("/(customer)/categories");
+  };
+
+  const handleSeeAllProducts = () => {
+    router.push({
+      pathname: "/(customer)/product",
+      params: selectedStore ? { storeId: selectedStore } : {},
+    });
+  };
+
+  // Define all sections for the main FlatList
+  const sections = [
+    { type: "header", data: null },
+    { type: "banner", data: null },
+    { type: "categories", data: categories },
+    { type: "storeSelector", data: null },
+    { type: "productsHeader", data: null },
+    { type: "products", data: products },
+  ];
+
+  const renderSection = ({ item }: { item: { type: string; data: any } }) => {
+    switch (item.type) {
+      case "header":
+        return (
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.greeting}>Welcome to</Text>
+                <Text style={styles.title}>FreshCart</Text>
+              </View>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/(customer)/search")}
+                >
+                  <Search size={22} color={theme.textPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => router.push("/(customer)/orders")}
+                >
+                  <Bell size={22} color={theme.textPrimary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Search Bar */}
+            <TouchableOpacity
+              style={styles.searchBar}
+              onPress={() => router.push("/(customer)/search")}
+              activeOpacity={0.8}
+            >
+              <Search size={18} color={theme.textMuted} />
+              <Text style={styles.searchPlaceholder}>
+                Search fresh products...
+              </Text>
+            </TouchableOpacity>
+          </View>
+        );
+
+      case "banner":
+        return (
+          <View style={styles.bannerContainer}>
+            <View style={styles.banner}>
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerTag}>Special Offer</Text>
+                <Text style={styles.bannerTitle}>
+                  30% off your first purchase
+                </Text>
+                <TouchableOpacity style={styles.bannerBtn}>
+                  <Text style={styles.bannerBtnText}>Shop Now</Text>
+                  <ChevronRight size={16} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.bannerImage}>
+                <Text style={{ fontSize: 60 }}>🥗</Text>
+              </View>
+            </View>
+          </View>
+        );
+
+      case "categories":
+        return (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Categories</Text>
+              {selectedCategory ? (
+                <TouchableOpacity onPress={() => setSelectedCategory(null)}>
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={handleSeeAllCategories}>
+                  <Text style={styles.seeAll}>See All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {loadingCategories ? (
+              <ActivityIndicator color={theme.primary} style={{ marginVertical: 20 }} />
+            ) : (
+              <FlatList
+                data={categories}
+                renderItem={renderCategoryItem}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoriesList}
+              />
+            )}
+          </>
+        );
+
+      case "storeSelector":
+        return (
+          <StoreSelector
+            onSelect={setSelectedStore}
+            selectedStore={selectedStore}
+          />
+        );
+
+      case "productsHeader":
+        return (
+          <View style={styles.sectionHeader}>
+            <ShoppingBag size={18} color={theme.primary} />
+            <Text style={styles.sectionTitle}>
+              {selectedCategory
+                ? `Products in ${categories.find(c => c.id === selectedCategory)?.name || "Category"}`
+                : selectedStore
+                  ? "Store Products"
+                  : "Featured Products"}
+            </Text>
+            <TouchableOpacity onPress={handleSeeAllProducts}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+        );
+
+      case "products":
+        if (isLoading) {
+          return (
+            <ActivityIndicator
+              color={theme.primary}
+              style={{ marginTop: 40 }}
+            />
+          );
+        }
+        if (error) {
+          return (
+            <Text style={styles.errorText}>Failed to load products</Text>
+          );
+        }
+        if (!products || products.length === 0) {
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🛒</Text>
+              <Text style={styles.emptyText}>
+                {selectedCategory
+                  ? "No products in this category yet"
+                  : selectedStore
+                    ? "No products available in this store"
+                    : "No products available"}
+              </Text>
+              <Text style={styles.emptySub}>
+                Check back later for fresh items
+              </Text>
+            </View>
+          );
+        }
+        return (
+          <FlatList
+            data={products}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            renderItem={renderProduct}
+            scrollEnabled={false}
+            contentContainerStyle={{ padding: 8, paddingBottom: 20 }}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <AppScreen noPadding>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greeting}>Welcome to</Text>
-            <Text style={styles.title}>FreshCart</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/(customer)/search")}
-            >
-              <Search size={22} color={theme.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/(customer)/orders")}
-            >
-              <Bell size={22} color={theme.textPrimary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          onPress={() => router.push("/(customer)/search")}
-          activeOpacity={0.8}
-        >
-          <Search size={18} color={theme.textMuted} />
-          <Text style={styles.searchPlaceholder}>Search fresh products...</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
+      <FlatList
+        data={sections}
+        renderItem={renderSection}
+        keyExtractor={(item, index) => `${item.type}-${index}`}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -158,82 +353,8 @@ export default function HomeScreen() {
             tintColor={theme.primary}
           />
         }
-      >
-        {/* Promo Banner */}
-        <View style={styles.bannerContainer}>
-          <View style={styles.banner}>
-            <View style={styles.bannerContent}>
-              <Text style={styles.bannerTag}>Special Offer</Text>
-              <Text style={styles.bannerTitle}>
-                30% off your first purchase
-              </Text>
-              <TouchableOpacity style={styles.bannerBtn}>
-                <Text style={styles.bannerBtnText}>Shop Now</Text>
-                <ChevronRight size={16} color={theme.primary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.bannerImage}>
-              <Text style={{ fontSize: 60 }}>🥗</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Categories */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={CATEGORIES}
-          renderItem={renderCategoryItem}
-          keyExtractor={(item) => item.name}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
-        />
-
-        {/* Store Selector */}
-        <StoreSelector
-          onSelect={setSelectedStore}
-          selectedStore={selectedStore}
-        />
-
-        {/* Products Section */}
-        <View style={styles.sectionHeader}>
-          <ShoppingBag size={18} color={theme.primary} />
-          <Text style={styles.sectionTitle}>
-            {selectedStore ? "Store Products" : "Featured Products"}
-          </Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {isLoading ? (
-          <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
-        ) : error ? (
-          <Text style={styles.errorText}>Failed to load products</Text>
-        ) : (
-          <FlatList
-            data={products}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            renderItem={({ item }) => <ProductCard item={item} />}
-            contentContainerStyle={{ padding: 8, paddingBottom: 200 }}
-            scrollEnabled={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No products available</Text>
-                <Text style={styles.emptySub}>
-                  Check back later for fresh items
-                </Text>
-              </View>
-            }
-          />
-        )}
-      </ScrollView>
+        contentContainerStyle={{ paddingBottom: 100 }}
+      />
     </AppScreen>
   );
 }
@@ -415,15 +536,27 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 60,
+    paddingHorizontal: 40,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   emptyText: {
     color: theme.textPrimary,
     fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  clearText: {
+    color: theme.accent,
+    fontSize: 14,
     fontWeight: "600",
   },
   emptySub: {
     color: theme.textMuted,
     fontSize: 13,
     marginTop: 4,
+    textAlign: "center",
   },
 });

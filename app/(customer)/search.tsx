@@ -15,6 +15,7 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { supabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { useMemo } from 'react';
 import {
   Search,
   SlidersHorizontal,
@@ -43,7 +44,7 @@ export default function SearchScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
   const { theme } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {
     data: results,

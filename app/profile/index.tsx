@@ -5,11 +5,12 @@ import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { User, LogIn, UserPlus } from "lucide-react-native";
 import ProfileScreen from "../../src/components/ProfileScreen";
+import { useMemo } from 'react';
 
 export default function CustomerProfileScreen() {
   const { theme } = useTheme();
   const { user, loading } = useAuthStore();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (loading) {
     return (

@@ -10,6 +10,7 @@ import {
 } from "lucide-react-native";
 import { colors } from "../../src/constants/colors";
 
+
 export default function SellerLayout() {
   const { theme } = useTheme();
   return (
