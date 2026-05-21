@@ -9,11 +9,13 @@ import {
   Alert,
   ScrollView,
   Image,
+  Modal,
 } from "react-native";
 import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { LocationPicker } from "../../src/components/LocationPicker";
 import { Store, MapPin, Save, ChevronLeft, Camera } from "lucide-react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useImageUpload } from "../../src/hooks/useImageUpload";
@@ -28,6 +30,7 @@ export default function StoreSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [store, setStore] = useState<any>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
@@ -36,6 +39,8 @@ export default function StoreSettings() {
     address: "",
     logo_url: "",
     is_active: true,
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   const { uploadImage, uploading } = useImageUpload("images");
@@ -56,6 +61,8 @@ export default function StoreSettings() {
         address: data.address || "",
         logo_url: data.logo_url || "",
         is_active: data.is_active ?? true,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
       });
     }
     setLoading(false);
@@ -67,7 +74,6 @@ export default function StoreSettings() {
     }
   }, [profile]);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (profile?.id) {
@@ -98,7 +104,6 @@ export default function StoreSettings() {
     setSaving(true);
     try {
       if (store?.id) {
-        // Update existing store
         const { error } = await supabase
           .from("stores")
           .update({
@@ -107,12 +112,13 @@ export default function StoreSettings() {
             address: form.address.trim(),
             logo_url: form.logo_url,
             is_active: form.is_active,
+            latitude: form.latitude,
+            longitude: form.longitude,
           })
           .eq("id", store.id);
         if (error) throw error;
         Alert.alert("Success", "Store updated successfully");
       } else {
-        // Create new store
         const { error } = await supabase.from("stores").insert({
           owner_id: profile?.id,
           name: form.name.trim(),
@@ -120,12 +126,13 @@ export default function StoreSettings() {
           address: form.address.trim(),
           logo_url: form.logo_url,
           is_active: form.is_active,
+          latitude: form.latitude,
+          longitude: form.longitude,
         });
         if (error) throw error;
         Alert.alert("Success", "Store created successfully");
       }
 
-      // Invalidate store queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["seller-store", profile?.id] });
       queryClient.invalidateQueries({ queryKey: ["store-products"] });
 
@@ -159,6 +166,7 @@ export default function StoreSettings() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
+          {/* Logo picker */}
           <TouchableOpacity style={styles.imagePickerContainer} onPress={handleImagePick} disabled={uploading}>
             {form.logo_url ? (
               <Image source={{ uri: form.logo_url }} style={styles.storeImage} />
@@ -197,6 +205,19 @@ export default function StoreSettings() {
           />
 
           <Text style={styles.label}>Store Address *</Text>
+
+          {/* Map Picker Button */}
+          <TouchableOpacity
+            style={[styles.mapPickerBtn, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}
+            onPress={() => setShowMapPicker(true)}
+          >
+            <MapPin size={18} color={theme.primary} />
+            <Text style={[styles.mapPickerText, { color: theme.primary }]}>
+              {form.latitude ? '📍 Location Selected - Tap to Change' : 'Pick Store Location on Map'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Address input */}
           <View style={styles.addressContainer}>
             <MapPin size={20} color={theme.textMuted} style={styles.addressIcon} />
             <TextInput
@@ -243,9 +264,26 @@ export default function StoreSettings() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Map Picker Modal */}
+      <Modal visible={showMapPicker} animationType="slide">
+        <LocationPicker
+          initialLatitude={form.latitude || undefined}
+          initialLongitude={form.longitude || undefined}
+          onLocationSelect={(location) => {
+            setForm((f) => ({
+              ...f,
+              address: location.address,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }));
+            setShowMapPicker(false);
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
+      </Modal>
     </AppScreen>
   );
-
 }
 
 const createStyles = (theme: any) => StyleSheet.create({
@@ -342,6 +380,20 @@ const createStyles = (theme: any) => StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: "top",
+  },
+  mapPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  mapPickerText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   addressContainer: {
     flexDirection: "row",

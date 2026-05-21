@@ -9,6 +9,7 @@ import { useCartStore } from "../../src/stores/cartStore";
 import { useAuthStore } from "../../src/stores/authStore";
 import { router } from "expo-router";
 import { validate } from "../../src/lib/validate";
+import { GeocodingService } from "../../src/services/geocoding";
 import {
   ChevronLeft, MapPin, FileText, CreditCard,
   Truck, CheckCircle2, Phone,
@@ -24,13 +25,9 @@ interface SavedAddress {
   full_address: string;
   phone: string | null;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
-
-const SHIPPING_METHODS = [
-  { id: "standard", name: "Standard", price: 50, time: "3-5 business days" },
-  { id: "same_day", name: "Same Day", price: 120, time: "Before 6pm today" },
-  { id: "pick_date", name: "Scheduled", price: 150, time: "Choose your delivery" },
-];
 
 const CURRENCY = "₱";
 
@@ -42,7 +39,6 @@ export default function CheckoutScreen() {
 
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [selectedShipping, setSelectedShipping] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -50,42 +46,42 @@ export default function CheckoutScreen() {
   const [showManualInput, setShowManualInput] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash_on_delivery");
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(50);
+  const [customerDistance, setCustomerDistance] = useState(0);
+  const [isCalculatingFee, setIsCalculatingFee] = useState(false);
 
-  const shipping = SHIPPING_METHODS.find((s) => s.id === selectedShipping);
-  const deliveryFee = shipping?.price ?? 50;
   const subtotal = total();
   const grandTotal = subtotal + deliveryFee;
+  const [isOutOfRange, setIsOutOfRange] = useState(false);
+  const [maxRadius, setMaxRadius] = useState(20);
 
-  // Guard: validate cart is single-store before allowing checkout
-  const storeIds = [...new Set(
-    items.map((i) => (i as any).store_id).filter(Boolean)
-  )];
+
+  const storeIds = [...new Set(items.map((i) => (i as any).store_id).filter(Boolean))];
   const isMultiStore = storeIds.length > 1;
+
+  // Reset checkout state on mount
   useEffect(() => {
-    // Reset checkout state when component mounts
     setStep(1);
     setPlacedOrderId(null);
     setAddress("");
     setNotes("");
-    setSelectedShipping("standard");
+    setDeliveryFee(50);
     setPaymentMethod("cash_on_delivery");
     setSelectedAddressId(null);
     setShowManualInput(false);
   }, []);
 
+  // Load saved addresses
   useEffect(() => {
     if (!user) return;
-
     supabase
       .from("delivery_addresses")
-      .select("id, label, full_address, phone, is_default")
+      .select("id, label, full_address, phone, is_default, latitude, longitude")
       .eq("customer_id", user.id)
       .order("is_default", { ascending: false })
       .then(({ data }) => {
-        const list = data ?? [];
+        const list = (data ?? []) as SavedAddress[];
         setSavedAddresses(list);
-
-        // Only auto-select if we're on step 2 and no address is selected
         if (step === 2 && !address && list.length > 0) {
           const def = list.find((a) => a.is_default) ?? list[0];
           setSelectedAddressId(def.id);
@@ -95,7 +91,103 @@ export default function CheckoutScreen() {
           setShowManualInput(true);
         }
       });
-  }, [user, step]); // Added step dependency
+  }, [user, step]);
+
+  // Calculate delivery fee
+  useEffect(() => {
+    if (step === 3 && address.trim()) {
+      calculateDeliveryFee();
+    }
+  }, [step, address, selectedAddressId]);
+
+  const calculateDeliveryFee = async () => {
+    if (!user || items.length === 0) return;
+    setIsCalculatingFee(true);
+    setIsOutOfRange(false);
+
+    try {
+      let customerLat: number | null = null;
+      let customerLng: number | null = null;
+
+      if (selectedAddressId) {
+        const addr = savedAddresses.find(a => a.id === selectedAddressId);
+        customerLat = addr?.latitude || null;
+        customerLng = addr?.longitude || null;
+      }
+
+      if (!customerLat || !customerLng) {
+        const coords = await GeocodingService.addressToCoordinates(address);
+        if (coords) {
+          customerLat = coords.latitude;
+          customerLng = coords.longitude;
+        }
+      }
+
+      const mainStoreId = storeIds[0];
+      const { data: store } = await supabase
+        .from('stores')
+        .select('latitude, longitude, delivery_radius_km')
+        .eq('id', mainStoreId)
+        .single();
+
+      if (store?.latitude && store?.longitude && customerLat && customerLng) {
+        const distance = GeocodingService.calculateDistance(
+          customerLat, customerLng, store.latitude, store.longitude
+        );
+        setCustomerDistance(distance);
+
+        const radius = store.delivery_radius_km || 20;
+        setMaxRadius(radius);
+
+        // Check if within delivery range FIRST
+        if (distance > radius) {
+          setIsOutOfRange(true);
+          setDeliveryFee(0);
+          setIsCalculatingFee(false);
+          return;
+        }
+
+        // Calculate fee for in-range deliveries
+        let fee = Math.max(6, distance * 6);
+
+        // FREE delivery for orders over ₱150
+        if (subtotal > 150) {
+          fee = 0;
+        }
+        // Small order minimum ₱5
+        else if (subtotal < 30 && fee < 5) {
+          fee = 5;
+        }
+
+        // Multi-store logic
+        if (isMultiStore) {
+          const additionalStores = storeIds.slice(1);
+          for (const additionalStoreId of additionalStores) {
+            const { data: additionalStore } = await supabase
+              .from('stores')
+              .select('latitude, longitude')
+              .eq('id', additionalStoreId)
+              .single();
+
+            if (additionalStore?.latitude && additionalStore?.longitude) {
+              const storeDistance = GeocodingService.calculateDistance(
+                store.latitude, store.longitude,
+                additionalStore.latitude, additionalStore.longitude
+              );
+              if (storeDistance <= 0.2) fee -= fee * 0.25;
+            }
+            fee += 5;
+          }
+        }
+
+        setDeliveryFee(Math.max(0, Math.round(fee * 100) / 100));
+      }
+    } catch (error) {
+      console.error('Error calculating delivery fee:', error);
+    } finally {
+      setIsCalculatingFee(false);
+    }
+  };
 
   const handleOrder = async () => {
     if (notes && !validate.notes(notes))
@@ -105,16 +197,9 @@ export default function CheckoutScreen() {
       return Alert.alert("Error", "Address must be 5–300 characters.");
     if (items.length === 0) return Alert.alert("Error", "Your cart is empty.");
     if (!user) return Alert.alert("Sign In Required", "Please sign in to place an order.");
-    if (isMultiStore) {
-      return Alert.alert(
-        "Multiple Stores",
-        "Your cart has items from different stores. Please keep items from one store per order.",
-      );
-    }
 
     setLoading(true);
     try {
-      // Get store_id from the first cart item's store_product
       const { data: sp, error: spErr } = await supabase
         .from("store_products")
         .select("store_id")
@@ -123,7 +208,6 @@ export default function CheckoutScreen() {
 
       if (spErr || !sp) throw new Error("Could not resolve store.");
 
-      // Insert order
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .insert({
@@ -140,7 +224,6 @@ export default function CheckoutScreen() {
 
       if (orderErr || !order) throw new Error(orderErr?.message ?? "Order creation failed.");
 
-      // Insert order items
       const { error: itemsErr } = await supabase.from("order_items").insert(
         items.map((item) => ({
           order_id: order.id,
@@ -152,7 +235,6 @@ export default function CheckoutScreen() {
 
       if (itemsErr) throw new Error(itemsErr.message);
 
-      // Decrement stock for each item atomically
       await Promise.all(
         items.map((item) =>
           supabase.rpc("decrement_stock", {
@@ -173,8 +255,7 @@ export default function CheckoutScreen() {
     }
   };
 
-  // Success screen
-  // Success screen
+  // ── Success Screen ──────────────────────────────────────────────────────
   if (step === 4) {
     return (
       <AppScreen>
@@ -190,7 +271,6 @@ export default function CheckoutScreen() {
             <TouchableOpacity
               style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }]}
               onPress={() => {
-                // Save the ID before resetting state
                 const orderId = placedOrderId;
                 setStep(1);
                 setPlacedOrderId(null);
@@ -215,6 +295,7 @@ export default function CheckoutScreen() {
     );
   }
 
+  // ── Main Checkout Flow ──────────────────────────────────────────────────
   return (
     <AppScreen>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
@@ -228,18 +309,9 @@ export default function CheckoutScreen() {
             <View style={{ width: 40 }} />
           </View>
 
-          {/* Multi-store warning */}
-          {isMultiStore && (
-            <View style={[styles.warningBox, { backgroundColor: theme.warning + "15", borderColor: theme.warning + "40" }]}>
-              <Text style={[styles.warningText, { color: theme.warning }]}>
-                ⚠️ Your cart has items from multiple stores. Please remove items so all items are from the same store before checking out.
-              </Text>
-            </View>
-          )}
-
           {/* Progress */}
           <View style={styles.progressRow}>
-            {["Shipping", "Address", "Payment"].map((label, i) => (
+            {["Delivery", "Address", "Payment"].map((label, i) => (
               <View key={label} style={styles.progressItem}>
                 <View style={[styles.progressDot, { borderColor: theme.border, backgroundColor: theme.background }, i < step && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
                   <Text style={[styles.progressNum, { color: theme.textMuted }, i < step && { color: "#fff" }]}>{i + 1}</Text>
@@ -250,32 +322,36 @@ export default function CheckoutScreen() {
             ))}
           </View>
 
-          {/* Step 1: Shipping */}
+          {/* Step 1: Delivery Fee Info */}
           {step === 1 && (
             <>
-              <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Shipping Method</Text>
-              {SHIPPING_METHODS.map((method) => (
-                <TouchableOpacity
-                  key={method.id}
-                  style={[styles.shippingCard, { backgroundColor: theme.surface, borderColor: theme.border }, selectedShipping === method.id && { borderColor: theme.primary, backgroundColor: theme.primary + "05" }]}
-                  onPress={() => setSelectedShipping(method.id)}
-                >
-                  <View style={styles.shippingLeft}>
-                    <Truck size={22} color={selectedShipping === method.id ? theme.primary : theme.textMuted} />
-                    <View style={{ marginLeft: 12 }}>
-                      <Text style={[styles.shippingName, { color: theme.textPrimary }, selectedShipping === method.id && { color: theme.primary }]}>{method.name}</Text>
-                      <Text style={[styles.shippingTime, { color: theme.textSecondary }]}>{method.time}</Text>
-                    </View>
+              <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Delivery Fee</Text>
+
+              <View style={[styles.deliveryInfoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={styles.deliveryInfoHeader}>
+                  <Truck size={22} color={theme.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.deliveryInfoTitle, { color: theme.textPrimary }]}>
+                      Distance-Based Delivery
+                    </Text>
+                    <Text style={[styles.deliveryInfoSub, { color: theme.textSecondary }]}>
+                      ₱6.00/km • Free over ₱150 • Min ₱5
+                    </Text>
                   </View>
-                  <Text style={[styles.shippingPrice, { color: theme.textPrimary }, selectedShipping === method.id && { color: theme.primary }]}>
-                    {CURRENCY}{method.price.toFixed(2)}
+                </View>
+              </View>
+
+              {isMultiStore && (
+                <View style={[styles.infoBox, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}>
+                  <Text style={[styles.infoText, { color: theme.primary }]}>
+                    🚚 Multi-store order: Additional ₱5 per store with same-block discounts available
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+              )}
+
               <TouchableOpacity
-                style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }, isMultiStore && { opacity: 0.5 }]}
+                style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }]}
                 onPress={() => setStep(2)}
-                disabled={isMultiStore}
               >
                 <Text style={styles.primaryBtnText}>Next</Text>
               </TouchableOpacity>
@@ -375,18 +451,11 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <TouchableOpacity
-                  style={[styles.rowSecondaryBtn, { borderColor: theme.border }]}
-                  onPress={() => setStep(1)}
-                >
+                <TouchableOpacity style={[styles.rowSecondaryBtn, { borderColor: theme.border }]} onPress={() => setStep(1)}>
                   <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[
-                    styles.rowPrimaryBtn,
-                    { backgroundColor: theme.primary },
-                    (!selectedAddressId && !address.trim()) && { opacity: 0.5 }
-                  ]}
+                  style={[styles.rowPrimaryBtn, { backgroundColor: theme.primary }, (!selectedAddressId && !address.trim()) && { opacity: 0.5 }]}
                   onPress={() => setStep(3)}
                   disabled={!selectedAddressId && !address.trim()}
                 >
@@ -399,6 +468,13 @@ export default function CheckoutScreen() {
           {/* Step 3: Payment + Summary */}
           {step === 3 && (
             <>
+              {isOutOfRange && (
+                <View style={[styles.warningBox, { backgroundColor: theme.error + '15', borderColor: theme.error + '40' }]}>
+                  <Text style={[styles.warningText, { color: theme.error }]}>
+                    🚫 This store only delivers within {maxRadius} km. You are {customerDistance.toFixed(0)} km away.
+                  </Text>
+                </View>
+              )}
               <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Payment Method</Text>
               <TouchableOpacity
                 style={[styles.paymentCard, { backgroundColor: theme.surface }, paymentMethod === "cash_on_delivery" && { borderColor: theme.primary, borderWidth: 2 }]}
@@ -447,10 +523,28 @@ export default function CheckoutScreen() {
                   <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Subtotal</Text>
                   <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>{CURRENCY}{subtotal.toFixed(2)}</Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery ({shipping?.name})</Text>
-                  <Text style={[styles.summaryVal, { color: theme.textPrimary }]}>{CURRENCY}{deliveryFee.toFixed(2)}</Text>
-                </View>
+
+                {isCalculatingFee ? (
+                  <View style={styles.summaryRow}>
+                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery</Text>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  </View>
+                ) : (
+                  <View style={styles.summaryRow}>
+                    <View>
+                      <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery</Text>
+                      {customerDistance > 0 && (
+                        <Text style={[styles.distanceText, { color: theme.textMuted }]}>
+                          {customerDistance.toFixed(1)} km
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={[styles.summaryVal, { color: deliveryFee === 0 ? '#4CAF50' : theme.textPrimary }]}>
+                      {deliveryFee === 0 ? 'FREE' : `${CURRENCY}${deliveryFee.toFixed(2)}`}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={[styles.divider, { borderTopColor: theme.divider }]} />
                 <View style={styles.summaryRow}>
                   <Text style={[styles.totalLabel, { color: theme.textPrimary }]}>Total</Text>
@@ -459,16 +553,13 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <TouchableOpacity
-                  style={[styles.rowSecondaryBtn, { borderColor: theme.border }]}
-                  onPress={() => setStep(2)}
-                >
+                <TouchableOpacity style={[styles.rowSecondaryBtn, { borderColor: theme.border }]} onPress={() => setStep(2)}>
                   <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.rowPrimaryBtn, { backgroundColor: theme.primary }, (loading || items.length === 0) && { opacity: 0.6 }]}
+                  style={[styles.rowPrimaryBtn, { backgroundColor: theme.primary }, (loading || items.length === 0 || isOutOfRange) && { opacity: 0.6 }]}
                   onPress={handleOrder}
-                  disabled={loading || items.length === 0}
+                  disabled={loading || items.length === 0 || isOutOfRange}
                 >
                   {loading
                     ? <ActivityIndicator color="#fff" />
@@ -487,8 +578,6 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   title: { fontSize: 20, fontWeight: "700" },
-  warningBox: { borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1 },
-  warningText: { fontSize: 13, lineHeight: 20 },
   progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 28, paddingHorizontal: 8 },
   progressItem: { flexDirection: "row", alignItems: "center", flex: 1 },
   progressDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: "center", justifyContent: "center" },
@@ -496,21 +585,28 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   progressLabel: { fontSize: 11, marginLeft: 6, fontWeight: "500" },
   progressLine: { flex: 1, height: 2, marginHorizontal: 8 },
   sectionLabel: { fontSize: 18, fontWeight: "700", marginBottom: 16, marginTop: 8 },
-  shippingCard: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 2 },
-  shippingLeft: { flexDirection: "row", alignItems: "center" },
-  shippingName: { fontSize: 15, fontWeight: "600" },
-  shippingTime: { fontSize: 12, marginTop: 2 },
-  shippingPrice: { fontSize: 16, fontWeight: "700" },
+
+  // Delivery info
+  deliveryInfoCard: { borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1 },
+  deliveryInfoHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  deliveryInfoTitle: { fontSize: 15, fontWeight: '600' },
+  deliveryInfoSub: { fontSize: 12, marginTop: 2 },
+  infoBox: { borderRadius: 12, padding: 12, marginBottom: 20, borderWidth: 1 },
+  infoText: { fontSize: 13, lineHeight: 18 },
+  distanceText: { fontSize: 11, marginTop: 2 },
+
   inputCard: { borderRadius: 16, padding: 18, marginBottom: 12, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 },
   inputHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   inputTitle: { fontSize: 14, fontWeight: "600" },
   input: { borderRadius: 12, padding: 14, fontSize: 14, borderWidth: 1, minHeight: 80 },
+
   paymentCard: { borderRadius: 16, padding: 16, marginBottom: 12, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 },
   paymentOption: { flexDirection: "row", alignItems: "center", gap: 14 },
   paymentIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   paymentTitle: { fontSize: 15, fontWeight: "600" },
   paymentSub: { fontSize: 13, marginTop: 2 },
   radioCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+
   summaryCard: { borderRadius: 16, padding: 18, marginBottom: 20, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 },
   summaryItem: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   summaryItemName: { fontSize: 13, flex: 1 },
@@ -521,55 +617,23 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   summaryVal: { fontSize: 14, fontWeight: "600" },
   totalLabel: { fontWeight: "700", fontSize: 16 },
   totalVal: { fontWeight: "800", fontSize: 18 },
-  btnRow: { flexDirection: "row", gap: 12, marginBottom: 30 },
-  rowPrimaryBtn: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  rowSecondaryBtn: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    borderWidth: 1
-  },
 
-  // For full-width buttons (success screen, Next in step 1)
-  fullWidthPrimaryBtn: {
-    width: "100%",
-    borderRadius: 16,
-    padding: 18,
-    alignItems: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    marginBottom: 12
-  },
-  fullWidthSecondaryBtn: {
-    width: "100%",
-    borderRadius: 16,
-    padding: 18,
-    alignItems: "center",
-    borderWidth: 1
-  }, primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  // Buttons
+  btnRow: { flexDirection: "row", gap: 12, marginBottom: 30 },
+  rowPrimaryBtn: { flex: 1, borderRadius: 16, padding: 16, alignItems: "center", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  rowSecondaryBtn: { flex: 1, borderRadius: 16, padding: 16, alignItems: "center", borderWidth: 1 },
+  fullWidthPrimaryBtn: { width: "100%", borderRadius: 16, padding: 18, alignItems: "center", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6, marginBottom: 12 },
+  fullWidthSecondaryBtn: { width: "100%", borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1 },
+  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   secondaryBtnText: { fontWeight: "600", fontSize: 16 },
+
+  // Success
   successContainer: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16, paddingHorizontal: 24 },
   successIcon: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   successTitle: { fontSize: 28, fontWeight: "800" },
-  successSub: {
-    fontSize: 15,
-    textAlign: "center",
-    marginBottom: 32,
-    lineHeight: 22,
-    paddingHorizontal: 16
-  },
+  successSub: { fontSize: 15, textAlign: "center", marginBottom: 32, lineHeight: 22, paddingHorizontal: 16 },
+
+  // Saved addresses
   savedAddrCard: { borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 10 },
   savedAddrRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   savedAddrChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
@@ -583,4 +647,15 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   savedAddrPhoneText: { fontSize: 12 },
   toggleBtn: { paddingVertical: 10, alignItems: "center", marginBottom: 8 },
   toggleBtnText: { fontSize: 13, fontWeight: "600" },
+
+  warningBox: {
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1
+  },
+  warningText: {
+    fontSize: 13,
+    lineHeight: 20
+  },
 });

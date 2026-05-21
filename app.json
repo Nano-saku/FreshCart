@@ -39,13 +39,21 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow FreshCart to use your location for delivery fee calculations.",
+          "locationWhenInUsePermission": "Allow FreshCart to use your location for delivery fee calculations."
+        }
+      ],
+      [
         "expo-file-system",
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends.",
           "cameraPermission": "The app accesses your camera to let you share photos with your friends."
         }
       ],
-      "expo-image"
+      "expo-image",
+      "@maplibre/maplibre-react-native"
     ],
     "extra": {
       "router": {},

@@ -9,6 +9,8 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { logger } from "../../src/lib/logger"
+import { GeocodingService } from "../../src/services/geocoding";
+import { LocationPicker } from '../../src/components/LocationPicker';
 import { useTheme } from "../../src/contexts/ThemeContext";
 import {
   ChevronLeft, MapPin, Phone, Plus, Trash2,
@@ -26,6 +28,8 @@ interface DeliveryAddress {
   full_address: string;
   phone: string | null;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
 }
 
@@ -34,6 +38,8 @@ interface AddressFormData {
   full_address: string;
   phone: string;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const LABELS: AddressLabel[] = ["Home", "Work", "Other"];
@@ -49,6 +55,8 @@ const emptyForm = (): AddressFormData => ({
   full_address: "",
   phone: "",
   is_default: false,
+  latitude: null,
+  longitude: null,
 });
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
@@ -63,6 +71,7 @@ export default function AddressesScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<DeliveryAddress | null>(null);
   const [form, setForm] = useState<AddressFormData>(emptyForm());
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchAddresses = useCallback(async () => {
@@ -96,6 +105,8 @@ export default function AddressesScreen() {
       full_address: addr.full_address,
       phone: addr.phone || "",
       is_default: addr.is_default,
+      latitude: addr.latitude || null,
+      longitude: addr.longitude || null,
     });
     setShowModal(true);
   };
@@ -110,15 +121,26 @@ export default function AddressesScreen() {
     setSaving(true);
 
     try {
+      let coords = null;
+
+      // If coordinates already set from map picker, use those
+      if (form.latitude && form.longitude) {
+        coords = { latitude: form.latitude, longitude: form.longitude };
+      } else {
+        // Otherwise geocode the address
+        coords = await GeocodingService.addressToCoordinates(form.full_address.trim());
+      }
+
       const payload = {
         label: form.label,
         full_address: form.full_address.trim(),
         phone: form.phone.trim() || null,
         is_default: form.is_default,
+        latitude: coords?.latitude || null,
+        longitude: coords?.longitude || null,
       };
 
       if (form.is_default) {
-        // Clear any existing default first
         await supabase
           .from("delivery_addresses")
           .update({ is_default: false })
@@ -208,7 +230,6 @@ export default function AddressesScreen() {
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : addresses.length === 0 ? (
-        // ── Empty state ──────────────────────────────────────────────────────
         <View style={styles.emptyContainer}>
           <View style={[styles.emptyIcon, { backgroundColor: theme.primary + "12" }]}>
             <MapPin size={48} color={theme.primary} />
@@ -223,13 +244,11 @@ export default function AddressesScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        // ── Address list ─────────────────────────────────────────────────────
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
           {addresses.map((addr) => {
             const LabelIcon = LABEL_ICON[addr.label] || MoreHorizontal;
             return (
               <View key={addr.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: addr.is_default ? theme.primary + "50" : theme.border }]}>
-                {/* Card header */}
                 <View style={styles.cardHeader}>
                   <View style={[styles.labelChip, { backgroundColor: theme.primary + "12" }]}>
                     <LabelIcon size={14} color={theme.primary} />
@@ -242,21 +261,15 @@ export default function AddressesScreen() {
                     </View>
                   )}
                 </View>
-
-                {/* Address text */}
                 <Text style={[styles.addressText, { color: theme.textPrimary }]} numberOfLines={3}>
                   {addr.full_address}
                 </Text>
-
-                {/* Phone */}
                 {addr.phone ? (
                   <View style={styles.phoneRow}>
                     <Phone size={13} color={theme.textMuted} />
                     <Text style={[styles.phoneText, { color: theme.textSecondary }]}>{addr.phone}</Text>
                   </View>
                 ) : null}
-
-                {/* Actions */}
                 <View style={[styles.cardActions, { borderTopColor: theme.divider }]}>
                   {!addr.is_default && (
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleSetDefault(addr)}>
@@ -285,7 +298,6 @@ export default function AddressesScreen() {
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalKav}>
             <View style={[styles.modalSheet, { backgroundColor: theme.surface }]}>
-              {/* Modal handle */}
               <View style={[styles.modalHandle, { backgroundColor: theme.border }]} />
 
               <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
@@ -311,13 +323,24 @@ export default function AddressesScreen() {
                 })}
               </View>
 
-              {/* Address input */}
+              {/* Map Picker Button */}
               <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Full Address</Text>
+              <TouchableOpacity
+                style={[styles.mapPickerBtn, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}
+                onPress={() => setShowMapPicker(true)}
+              >
+                <MapPin size={18} color={theme.primary} />
+                <Text style={[styles.mapPickerText, { color: theme.primary }]}>
+                  {form.latitude ? '📍 Location Selected - Tap to Change' : 'Pick Location on Map'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Address input */}
               <TextInput
                 style={[styles.input, styles.inputMulti, { color: theme.textPrimary, backgroundColor: theme.background, borderColor: theme.border }]}
                 value={form.full_address}
                 onChangeText={(t) => setForm((f) => ({ ...f, full_address: t }))}
-                placeholder="House no., Street, Barangay, City, Province"
+                placeholder="Or type address manually"
                 placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={3}
@@ -372,6 +395,24 @@ export default function AddressesScreen() {
             </View>
           </KeyboardAvoidingView>
         </View>
+      </Modal>
+
+      {/* Map Picker Modal */}
+      <Modal visible={showMapPicker} animationType="slide">
+        <LocationPicker
+          initialLatitude={form.latitude || undefined}
+          initialLongitude={form.longitude || undefined}
+          onLocationSelect={(location) => {
+            setForm((f) => ({
+              ...f,
+              full_address: location.address,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }));
+            setShowMapPicker(false);
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
       </Modal>
     </AppScreen>
   );
@@ -457,8 +498,6 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
       justifyContent: "center", gap: 5, paddingVertical: 4,
     },
     actionText: { fontSize: 13, fontWeight: "600" },
-
-    // Modal
     modalOverlay: {
       flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
       justifyContent: "flex-end",
@@ -512,4 +551,18 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
       flex: 1, paddingVertical: 15, borderRadius: 14, alignItems: "center",
     },
     saveBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    mapPickerBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginBottom: 12,
+    },
+    mapPickerText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
   });

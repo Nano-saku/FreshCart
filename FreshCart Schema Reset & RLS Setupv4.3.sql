@@ -245,6 +245,7 @@ create table public.stores (
   description text,
   logo_url    text,
   address     text,
+  delivery_radius_km NUMERIC DEFAULT 20,
   latitude    numeric(10,8),
   longitude   numeric(11,8),
   is_active   boolean default true,
@@ -317,7 +318,9 @@ create table public.delivery_addresses (
   phone        text,
   is_default   boolean not null default false,
   created_at   timestamptz default now(),
-  updated_at   timestamptz default now()
+  updated_at   timestamptz default now(),
+  latitude NUMERIC(10,8),
+  longitude NUMERIC(11,8)
 );
 
 create table public.reviews (

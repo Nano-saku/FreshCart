@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "../src/contexts/ThemeContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "../src/lib/supabase";
+import { GeocodingService } from '../src/services/geocoding';
 import { ActivityIndicator, View } from "react-native";
 import { useTheme } from "../src/contexts/ThemeContext";
 import { useAuthStore } from "../src/stores/authStore";
@@ -26,7 +27,9 @@ function RootLayoutNav() {
   const { theme } = useTheme();
   const { setSession, fetchProfile } = useAuthStore();
   const [loading, setLoading] = useState(true);
-
+  useEffect(() => {
+    GeocodingService.requestPermissions();
+  }, []);
   useEffect(() => {
     // Check initial session on app start
     supabase.auth.getSession().then(async ({ data: { session } }) => {
