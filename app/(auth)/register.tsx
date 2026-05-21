@@ -10,12 +10,15 @@ import {
   ScrollView,
   Modal,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { useMemo } from 'react';
 import { supabase } from "../../src/lib/supabase";
 import { colors } from "../../src/constants/colors";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { TermsModal } from '../../src/components/TermsModal';
 import { validate } from "../../src/lib/validate";
 import { checkRateLimit } from "../../src/lib/rateLimiter";
 import {
@@ -38,6 +41,7 @@ export default function RegisterScreen() {
   const [role, setRole] = useState<UserRole>("customer");
   const [loading, setLoading] = useState(false);
   const isProcessing = useRef(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const [showVerify, setShowVerify] = useState(false);
   const [verifyCode, setVerifyCode] = useState("");
@@ -53,19 +57,19 @@ export default function RegisterScreen() {
 
     if (!fullName || !email || !password || !phone) {
       Alert.alert("Error", "Please fill in all fields");
-      isProcessing.current = false;  // Reset guard
+      isProcessing.current = false;
       return;
     }
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters");
-      isProcessing.current = false;  // Reset guard
+      isProcessing.current = false;
       return;
     }
     const { allowed, remainingMs } = await checkRateLimit('register:' + email, 3, 30 * 60_000);
     if (!allowed) {
       const mins = Math.ceil(remainingMs / 60_000);
       Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
-      isProcessing.current = false;  // Reset guard
+      isProcessing.current = false;
       return;
     }
 
@@ -81,14 +85,14 @@ export default function RegisterScreen() {
     if (error || !data.user) {
       Alert.alert("Registration Failed", error?.message || "Unknown error");
       setLoading(false);
-      isProcessing.current = false;  // Reset guard
+      isProcessing.current = false;
       return;
     }
 
     setLoading(false);
     setShowVerify(true);
     startResendTimer();
-    isProcessing.current = false;  // Reset guard
+    isProcessing.current = false;
   };
 
   const handleVerify = async () => {
@@ -99,7 +103,7 @@ export default function RegisterScreen() {
     if (!validate.phone(phone))
       return Alert.alert("Error", "Enter a valid PH mobile number (09XXXXXXXXX).");
     if (!validate.password(password))
-      return Alert.alert("Error", "Password must be 8–128 characters.");
+      return Alert.alert("Error", "Password must be 6–128 characters.");
     if (!validate.code(verifyCode)) {
       Alert.alert("Error", "Please enter the 6-digit code");
       return;
@@ -131,11 +135,24 @@ export default function RegisterScreen() {
     setVerifyLoading(false);
     await supabase.auth.signOut();
     setShowVerify(false);
+    setShowTerms(true);
+  };
 
+  const handleTermsAccept = () => {
+    setShowTerms(false);
     Alert.alert(
-      "Email Verified! 🎉",
-      "Your account is ready. Please sign in.",
+      "Welcome to FreshCart! 🎉",
+      "Your account is ready. Please sign in to start shopping.",
       [{ text: "Sign In", onPress: () => router.replace("/(auth)/login") }],
+    );
+  };
+
+  const handleTermsDecline = () => {
+    setShowTerms(false);
+    Alert.alert(
+      "Account Not Activated",
+      "You must accept the Terms of Service to use FreshCart. You can register again if you change your mind.",
+      [{ text: "OK" }]
     );
   };
 
@@ -184,11 +201,16 @@ export default function RegisterScreen() {
     ];
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+    >
       <ScrollView
         contentContainerStyle={styles.inner}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -319,6 +341,9 @@ export default function RegisterScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Extra bottom padding so keyboard doesn't cover fields */}
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Verification Modal */}
@@ -331,7 +356,7 @@ export default function RegisterScreen() {
               </View>
               <Text style={styles.modalTitle}>Verify Your Email</Text>
               <Text style={styles.modalSubtitle}>
-                We sent a 6-digit code to{""}
+                We sent a 6-digit code to {""}
                 <Text style={styles.emailHighlight}>{email}</Text>
               </Text>
 
@@ -395,7 +420,13 @@ export default function RegisterScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+
+      <TermsModal
+        visible={showTerms}
+        onAccept={handleTermsAccept}
+        onDecline={handleTermsDecline}
+      />
+    </KeyboardAvoidingView>
   );
 }
 

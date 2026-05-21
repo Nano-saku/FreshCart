@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  Modal,
 } from "react-native";
 import { router } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -18,10 +19,11 @@ import * as SecureStore from "expo-secure-store";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { useTheme } from "../../src/contexts/ThemeContext";
-import { User, Lock, Fingerprint, ArrowRight } from "lucide-react-native";
+import { User, Lock, Fingerprint, ArrowRight, ShieldCheck } from "lucide-react-native";
 import { logger } from "../../src/lib/logger";
 import { checkRateLimit } from "../../src/lib/rateLimiter";
 import { useMemo } from 'react';
+
 
 const BIOMETRIC_ENABLED_KEY = "biometric_enabled";
 const BIOMETRIC_UNLOCKED_KEY = "biometric_unlocked";
@@ -37,6 +39,10 @@ export default function LoginScreen() {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const didAutoTrigger = useRef(false);
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState("");
 
   useEffect(() => {
     initializeAuth();
@@ -51,6 +57,7 @@ export default function LoginScreen() {
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const biometricFlag = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
       const refreshToken = await SecureStore.getItemAsync("refresh_token");
+
 
       setBiometricAvailable(hasHardware && isEnrolled);
       setBiometricEnabled(biometricFlag === "true");
@@ -130,7 +137,18 @@ export default function LoginScreen() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setLoading(false);
-        Alert.alert("Login failed", error.message);
+        if (error.message.includes("Email not confirmed")) {
+          Alert.alert(
+            "Email Not Verified",
+            "Your email address has not been confirmed yet. Would you like us to resend the verification code?",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Resend Code", onPress: () => handleResendVerification() },
+            ]
+          );
+        } else {
+          Alert.alert("Login failed", error.message);
+        }
         return;
       }
       if (!data.session || !data.user) {
@@ -153,7 +171,83 @@ export default function LoginScreen() {
     }
     await attemptBiometricRestore(refreshToken);
   };
+  const handleResendVerification = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address first.");
+      return;
+    }
 
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email,
+      });
+
+      if (error) {
+        Alert.alert("Error", error.message);
+      } else {
+        setVerifyEmail(email);
+        setShowVerify(true);
+        Alert.alert(
+          "Verification Sent",
+          "A new verification code has been sent to your email. Please enter it below.",
+        );
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to resend verification email.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleVerifyFromLogin = async () => {
+    if (!verifyCode || verifyCode.length < 6) {
+      Alert.alert("Error", "Please enter the 6-digit verification code.");
+      return;
+    }
+
+    setVerifyLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: verifyEmail,
+        token: verifyCode,
+        type: "signup",
+      });
+
+      if (error) {
+        Alert.alert("Invalid Code", error.message);
+        setVerifyLoading(false);
+        return;
+      }
+
+      // Update profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ email_verified: true })
+          .eq("id", user.id);
+      }
+
+      setShowVerify(false);
+      setVerifyCode("");
+      setVerifyLoading(false);
+
+      Alert.alert(
+        "Email Verified! 🎉",
+        "Your email has been confirmed. You can now sign in.",
+        [{
+          text: "Sign In", onPress: () => {
+            // Clear password for security
+            setPassword("");
+          }
+        }]
+      );
+    } catch (err) {
+      setVerifyLoading(false);
+      Alert.alert("Error", "Verification failed. Please try again.");
+    }
+  };
   const fetchProfileAndRoute = async (user: any) => {
     if (!user) {
       setLoading(false);
@@ -293,8 +387,65 @@ export default function LoginScreen() {
               </>
             )}
           </TouchableOpacity>
-        </View>
 
+        </View>
+        {/* Verification Modal */}
+        <Modal visible={showVerify} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalInner}>
+                <View style={styles.verifyIcon}>
+                  <ShieldCheck size={32} color={theme.primary} />
+                </View>
+                <Text style={styles.modalTitle}>Verify Your Email</Text>
+                <Text style={styles.modalSubtitle}>
+                  We sent a 6-digit code to{" "}
+                  <Text style={styles.emailHighlight}>{verifyEmail}</Text>
+                </Text>
+
+                <View style={styles.codeInputBox}>
+                  <TextInput
+                    style={styles.codeInput}
+                    placeholder="000000"
+                    placeholderTextColor={theme.textMuted}
+                    value={verifyCode}
+                    onChangeText={(t) =>
+                      setVerifyCode(t.replace(/[^0-9]/g, "").slice(0, 6))
+                    }
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.verifyBtn, verifyLoading && { opacity: 0.7 }]}
+                  onPress={handleVerifyFromLogin}
+                  disabled={verifyLoading}
+                >
+                  {verifyLoading ? (
+                    <ActivityIndicator color={theme.textPrimary} />
+                  ) : (
+                    <>
+                      <Text style={styles.verifyBtnText}>Verify Email</Text>
+                      <ArrowRight size={16} color={theme.textPrimary} />
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowVerify(false);
+                    setVerifyCode("");
+                  }}
+                  style={{ marginTop: 16 }}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
         <TouchableOpacity onPress={() => router.replace("/register")} style={styles.link}>
           <Text style={[styles.linkText, { color: theme.textSecondary }]}>
             Don't have an account?{" "}
@@ -335,4 +486,86 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     link: { marginTop: 20, alignItems: "center" },
     linkText: { fontSize: 14 },
     linkHighlight: { fontWeight: "700" },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    modalCard: {
+      width: "100%",
+      maxWidth: 340,
+      borderRadius: 24,
+      backgroundColor: theme.surface,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 1,
+      shadowRadius: 24,
+      elevation: 10,
+    },
+    modalInner: {
+      padding: 28,
+      alignItems: "center",
+    },
+    verifyIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: theme.primary + "15",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    modalTitle: {
+      color: theme.textPrimary,
+      fontSize: 22,
+      fontWeight: "700",
+      marginBottom: 8,
+    },
+    modalSubtitle: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      textAlign: "center",
+      marginBottom: 24,
+    },
+    emailHighlight: {
+      color: theme.primary,
+      fontWeight: "600",
+    },
+    codeInputBox: {
+      backgroundColor: theme.background,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: theme.border,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      width: "100%",
+      marginBottom: 20,
+    },
+    codeInput: {
+      color: theme.textPrimary,
+      fontSize: 24,
+      fontWeight: "700",
+      textAlign: "center",
+      letterSpacing: 8,
+    },
+    verifyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: theme.primary,
+      borderRadius: 14,
+      paddingVertical: 16,
+      width: "100%",
+    },
+    verifyBtnText: {
+      color: theme.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    cancelText: {
+      color: theme.textMuted,
+      fontSize: 14,
+    },
   });

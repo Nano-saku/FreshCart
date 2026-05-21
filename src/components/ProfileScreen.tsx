@@ -112,7 +112,7 @@ export default function ProfileScreen() {
     {
       icon: Bell,
       label: "Notifications",
-      onPress: () => router.push("/profile/notifications"),
+      onPress: () => Alert.alert("Coming Soon", "Notifications will be available in a future update."),
       roles: ["customer", "seller", "admin"],
     },
     {
@@ -140,7 +140,7 @@ export default function ProfileScreen() {
     {
       icon: Gift,
       label: "Offers & Coupons",
-      onPress: () => Alert.alert("Coming Soon", "Language selection will be available in a future update."),
+      onPress: () => Alert.alert("Coming Soon", "Offers & Coupons will be available in a future update."),
       roles: ["customer"],
     },
   ];

@@ -51,7 +51,7 @@ export default function SettingsScreen() {
       title: "App",
       items: [
         { icon: Globe, label: "Language", value: "English", onPress: () => Alert.alert("Coming Soon", "Language selection will be available in a future update.") },
-        { icon: Info, label: "App Version", value: "v1.0.0", onPress: null },
+        { icon: Info, label: "App Version", value: "v1.0.5(alpha)", onPress: null },
       ],
     },
     {

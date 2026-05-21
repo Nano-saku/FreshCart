@@ -17,6 +17,7 @@ import { colors } from "../../src/constants/colors";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { logger } from "../../src/lib/logger";
 import { useMemo } from 'react';
+import * as LocalAuthentication from "expo-local-authentication";
 import {
   User,
   Shield,
@@ -52,7 +53,6 @@ export default function AdminUsersScreen() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Use the RPC function instead of direct table access
       const { data, error } = await supabase.rpc('get_all_profiles');
 
       if (error) {
@@ -91,7 +91,6 @@ export default function AdminUsersScreen() {
 
       if (error) throw error;
 
-
       Alert.alert("Success", `Role updated to ${editRole}`);
       setModalVisible(false);
       fetchUsers();
@@ -103,97 +102,149 @@ export default function AdminUsersScreen() {
     }
   };
 
-  const banUser = () => {
-    if (!selectedUser) return;
+  const handleUpdateRoleWithBiometric = async () => {
+    if (editRole === selectedUser?.role) return;
 
-    Alert.alert(
-      "Ban User",
-      `Are you sure you want to ban ${selectedUser.full_name || "this user"}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Ban",
-          style: "destructive",
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              const { error: banError } = await supabase
-                .from("profiles")
-                .update({ role: "banned" })
-                .eq("id", selectedUser.id);
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
-              if (banError) throw banError;
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Verify your identity to change user role",
+          fallbackLabel: "Use passcode",
+          disableDeviceFallback: false,
+        });
 
-              Alert.alert("Success", "User has been banned");
-              setModalVisible(false);
-              fetchUsers();
-            } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to ban user");
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-    );
+        if (!result.success) {
+          Alert.alert("Verification Failed", "Could not verify your identity.");
+          return;
+        }
+      }
+
+      updateUserRole();
+    } catch (error) {
+      logger.error("Biometric error:", error);
+      Alert.alert("Error", "Biometric verification failed.");
+    }
   };
 
-  const deleteUser = () => {
+  const banUser = async () => {
     if (!selectedUser) return;
 
-    Alert.alert(
-      "Delete User",
-      `This will ban and remove ${selectedUser.full_name || "this user"}'s profile data. To fully delete their auth account, use the Supabase dashboard.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              // Step 1: Set role to "banned" to block all access immediately
-              const { error: banError } = await supabase
-                .from("profiles")
-                .update({ role: "banned" })
-                .eq("id", selectedUser.id);
+    setActionLoading(true);
+    try {
+      const { error: banError } = await supabase
+        .from("profiles")
+        .update({ role: "banned" })
+        .eq("id", selectedUser.id);
 
-              if (banError) throw banError;
+      if (banError) throw banError;
 
-              // Step 2: Delete their cart, orders reference, and profile data
-              await supabase
-                .from("cart_items")
-                .delete()
-                .eq("customer_id", selectedUser.id);
-              await supabase
-                .from("reviews")
-                .delete()
-                .eq("customer_id", selectedUser.id);
+      Alert.alert("Success", "User has been banned");
+      setModalVisible(false);
+      fetchUsers();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to ban user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-              // Step 3: Delete the profile row itself
-              const { error: profileError } = await supabase
-                .from("profiles")
-                .delete()
-                .eq("id", selectedUser.id);
+  const handleBanWithBiometric = async () => {
+    if (!selectedUser) return;
 
-              if (profileError) throw profileError;
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
-              Alert.alert(
-                "User Removed",
-                "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard.",
-              );
-              setModalVisible(false);
-              fetchUsers();
-            } catch (error: any) {
-              logger.error("Delete user error:", error);
-              Alert.alert("Error", error.message || "Failed to delete user");
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-    );
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Verify your identity to ban user",
+          fallbackLabel: "Use passcode",
+          disableDeviceFallback: false,
+        });
+
+        if (!result.success) {
+          Alert.alert("Verification Failed", "Could not verify your identity.");
+          return;
+        }
+      }
+
+      banUser();
+    } catch (error) {
+      logger.error("Biometric error:", error);
+      Alert.alert("Error", "Biometric verification failed.");
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!selectedUser) return;
+
+    setActionLoading(true);
+    try {
+      const { error: banError } = await supabase
+        .from("profiles")
+        .update({ role: "banned" })
+        .eq("id", selectedUser.id);
+
+      if (banError) throw banError;
+
+      await supabase
+        .from("cart_items")
+        .delete()
+        .eq("customer_id", selectedUser.id);
+      await supabase
+        .from("reviews")
+        .delete()
+        .eq("customer_id", selectedUser.id);
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", selectedUser.id);
+
+      if (profileError) throw profileError;
+
+      Alert.alert(
+        "User Removed",
+        "Profile deleted and user banned. Their auth account is disabled. To fully purge from Auth, use the Supabase dashboard.",
+      );
+      setModalVisible(false);
+      fetchUsers();
+    } catch (error: any) {
+      logger.error("Delete user error:", error);
+      Alert.alert("Error", error.message || "Failed to delete user");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteWithBiometric = async () => {
+    if (!selectedUser) return;
+
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (hasHardware && isEnrolled) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Verify your identity to delete user",
+          fallbackLabel: "Use passcode",
+          disableDeviceFallback: false,
+        });
+
+        if (!result.success) {
+          Alert.alert("Verification Failed", "Could not verify your identity.");
+          return;
+        }
+      }
+
+      deleteUser();
+    } catch (error) {
+      logger.error("Biometric error:", error);
+      Alert.alert("Error", "Biometric verification failed.");
+    }
   };
 
   const getRoleColor = (role?: string) => {
@@ -345,7 +396,7 @@ export default function AdminUsersScreen() {
 
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.saveRoleBtn]}
-                    onPress={updateUserRole}
+                    onPress={handleUpdateRoleWithBiometric}
                     disabled={actionLoading || editRole === selectedUser.role}
                   >
                     {actionLoading ? (
@@ -368,7 +419,17 @@ export default function AdminUsersScreen() {
 
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.banBtn]}
-                    onPress={banUser}
+                    onPress={() => {
+                      if (!selectedUser) return;
+                      Alert.alert(
+                        "Ban User",
+                        `Are you sure you want to ban ${selectedUser.full_name || "this user"}?`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Ban", style: "destructive", onPress: handleBanWithBiometric },
+                        ],
+                      );
+                    }}
                     disabled={actionLoading}
                   >
                     <View
@@ -385,7 +446,17 @@ export default function AdminUsersScreen() {
 
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.deleteBtn]}
-                    onPress={deleteUser}
+                    onPress={() => {
+                      if (!selectedUser) return;
+                      Alert.alert(
+                        "Delete User",
+                        `This will ban and remove ${selectedUser.full_name || "this user"}'s profile data. To fully delete their auth account, use the Supabase dashboard.`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Delete", style: "destructive", onPress: handleDeleteWithBiometric },
+                        ],
+                      );
+                    }}
                     disabled={actionLoading}
                   >
                     <View
