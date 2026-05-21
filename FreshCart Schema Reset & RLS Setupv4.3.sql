@@ -304,7 +304,8 @@ create table public.cart_items (
   store_id         uuid references public.stores(id),
   quantity         int default 1,
   unique(customer_id, store_product_id),
-  created_at       timestamptz default now()
+  created_at       timestamptz default now(),
+  updated_at       timestamptz default now()
 );
 
 create table public.delivery_addresses (
@@ -390,13 +391,13 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 -- Check if user can modify a product (store owner or admin)
-create or replace function public.can_modify_product(product_id uuid)
+create or replace function public.can_modify_product(p_product_id uuid)
 returns boolean as $$
 begin
   return exists (
     select 1 from public.store_products sp
     join public.stores s on s.id = sp.store_id
-    where sp.product_id = product_id
+    where sp.product_id = p_product_id          -- ← now unambiguous
     and (s.owner_id = auth.uid() or public.is_admin())
   );
 end;

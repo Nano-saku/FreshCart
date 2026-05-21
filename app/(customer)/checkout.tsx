@@ -61,9 +61,21 @@ export default function CheckoutScreen() {
     items.map((i) => (i as any).store_id).filter(Boolean)
   )];
   const isMultiStore = storeIds.length > 1;
+  useEffect(() => {
+    // Reset checkout state when component mounts
+    setStep(1);
+    setPlacedOrderId(null);
+    setAddress("");
+    setNotes("");
+    setSelectedShipping("standard");
+    setPaymentMethod("cash_on_delivery");
+    setSelectedAddressId(null);
+    setShowManualInput(false);
+  }, []);
 
   useEffect(() => {
-    if (step !== 2 || !user) return;
+    if (!user) return;
+
     supabase
       .from("delivery_addresses")
       .select("id, label, full_address, phone, is_default")
@@ -72,16 +84,18 @@ export default function CheckoutScreen() {
       .then(({ data }) => {
         const list = data ?? [];
         setSavedAddresses(list);
-        if (!address && list.length > 0) {
+
+        // Only auto-select if we're on step 2 and no address is selected
+        if (step === 2 && !address && list.length > 0) {
           const def = list.find((a) => a.is_default) ?? list[0];
           setSelectedAddressId(def.id);
           setAddress(def.full_address);
           setShowManualInput(false);
-        } else if (!address) {
+        } else if (step === 2 && list.length === 0) {
           setShowManualInput(true);
         }
       });
-  }, [step, user]);
+  }, [user, step]); // Added step dependency
 
   const handleOrder = async () => {
     if (notes && !validate.notes(notes))
@@ -160,6 +174,7 @@ export default function CheckoutScreen() {
   };
 
   // Success screen
+  // Success screen
   if (step === 4) {
     return (
       <AppScreen>
@@ -173,15 +188,25 @@ export default function CheckoutScreen() {
           </Text>
           {placedOrderId && (
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
-              onPress={() => router.replace(`/(customer)/order/${placedOrderId}`)}
+              style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }]}
+              onPress={() => {
+                // Save the ID before resetting state
+                const orderId = placedOrderId;
+                setStep(1);
+                setPlacedOrderId(null);
+                router.push(`/(customer)/order/${orderId}`);
+              }}
             >
               <Text style={styles.primaryBtnText}>Track Your Order</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.secondaryBtn, { borderColor: theme.border }]}
-            onPress={() => router.replace("/(customer)")}
+            style={[styles.fullWidthSecondaryBtn, { borderColor: theme.border }]}
+            onPress={() => {
+              setStep(1);
+              setPlacedOrderId(null);
+              router.replace("/(customer)");
+            }}
           >
             <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back to Home</Text>
           </TouchableOpacity>
@@ -248,7 +273,7 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: theme.primary }, isMultiStore && { opacity: 0.5 }]}
+                style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }, isMultiStore && { opacity: 0.5 }]}
                 onPress={() => setStep(2)}
                 disabled={isMultiStore}
               >
@@ -350,13 +375,20 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} onPress={() => setStep(1)}>
+                <TouchableOpacity
+                  style={[styles.rowSecondaryBtn, { borderColor: theme.border }]}
+                  onPress={() => setStep(1)}
+                >
                   <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.primaryBtn, { backgroundColor: theme.primary }, !address.trim() && { opacity: 0.5 }]}
+                  style={[
+                    styles.rowPrimaryBtn,
+                    { backgroundColor: theme.primary },
+                    (!selectedAddressId && !address.trim()) && { opacity: 0.5 }
+                  ]}
                   onPress={() => setStep(3)}
-                  disabled={!address.trim()}
+                  disabled={!selectedAddressId && !address.trim()}
                 >
                   <Text style={styles.primaryBtnText}>Next</Text>
                 </TouchableOpacity>
@@ -427,11 +459,14 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} onPress={() => setStep(2)}>
+                <TouchableOpacity
+                  style={[styles.rowSecondaryBtn, { borderColor: theme.border }]}
+                  onPress={() => setStep(2)}
+                >
                   <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.primaryBtn, { backgroundColor: theme.primary }, (loading || items.length === 0) && { opacity: 0.6 }]}
+                  style={[styles.rowPrimaryBtn, { backgroundColor: theme.primary }, (loading || items.length === 0) && { opacity: 0.6 }]}
                   onPress={handleOrder}
                   disabled={loading || items.length === 0}
                 >
@@ -487,14 +522,54 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   totalLabel: { fontWeight: "700", fontSize: 16 },
   totalVal: { fontWeight: "800", fontSize: 18 },
   btnRow: { flexDirection: "row", gap: 12, marginBottom: 30 },
-  primaryBtn: { flex: 1, borderRadius: 16, padding: 18, alignItems: "center", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  secondaryBtn: { flex: 1, borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1 },
+  rowPrimaryBtn: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  rowSecondaryBtn: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1
+  },
+
+  // For full-width buttons (success screen, Next in step 1)
+  fullWidthPrimaryBtn: {
+    width: "100%",
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    marginBottom: 12
+  },
+  fullWidthSecondaryBtn: {
+    width: "100%",
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
+    borderWidth: 1
+  }, primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   secondaryBtnText: { fontWeight: "600", fontSize: 16 },
   successContainer: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16, paddingHorizontal: 24 },
   successIcon: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   successTitle: { fontSize: 28, fontWeight: "800" },
-  successSub: { fontSize: 15, textAlign: "center", marginBottom: 24 },
+  successSub: {
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 22,
+    paddingHorizontal: 16
+  },
   savedAddrCard: { borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 10 },
   savedAddrRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   savedAddrChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },

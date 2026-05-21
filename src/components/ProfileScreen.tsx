@@ -143,12 +143,6 @@ export default function ProfileScreen() {
       onPress: () => Alert.alert("Coming Soon", "Language selection will be available in a future update."),
       roles: ["customer"],
     },
-    {
-      icon: Truck,
-      label: "Order History",
-      onPress: () => router.push("/customer/orders"),
-      roles: ["customer"],
-    },
   ];
 
   // Admin-specific menu items

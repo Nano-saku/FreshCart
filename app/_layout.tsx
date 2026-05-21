@@ -87,9 +87,21 @@ function RootLayoutNav() {
 
   // Sync, no network call — uses the role already stored in authStore
   const routeByRole = (role: string) => {
-    if (role === "seller") router.replace("/(seller)");
-    else if (role === "admin") router.replace("/(admin)");
-    else router.replace("/(customer)");
+    switch (role) {
+      case "admin":
+        router.replace("/(admin)");
+        break;
+      case "seller":
+        router.replace("/(seller)");
+        break;
+      case "banned":
+        // Banned users should be logged out
+        useAuthStore.getState().signOut();
+        break;
+      default:
+        // Default to customer for any unrecognized role
+        router.replace("/(customer)");
+    }
   };
 
   if (loading) {

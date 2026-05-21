@@ -181,9 +181,29 @@ export default function LoginScreen() {
   };
 
   const routeByRole = (role: string) => {
-    if (role === "seller") router.replace("/(seller)");
-    else if (role === "customer") router.replace("/(customer)");
-    else router.replace("/(admin)");
+    if (!role) {
+      Alert.alert("Error", "Account role is missing. Please contact support.");
+      return;
+    }
+
+    switch (role) {
+      case "admin":
+        router.replace("/(admin)");
+        break;
+      case "seller":
+        router.replace("/(seller)");
+        break;
+      case "customer":
+        router.replace("/(customer)");
+        break;
+      case "banned":
+        Alert.alert("Account Suspended", "Your account has been suspended. Please contact support.");
+        break;
+      default:
+        // Unknown role - safest to route to customer and log the anomaly
+        logger.error(`[Login] Unknown role: ${role} for user, routing to customer`);
+        router.replace("/(customer)");
+    }
   };
 
 

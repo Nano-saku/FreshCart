@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<UserRole>("customer");
   const [loading, setLoading] = useState(false);
+  const isProcessing = useRef(false);
 
   const [showVerify, setShowVerify] = useState(false);
   const [verifyCode, setVerifyCode] = useState("");
@@ -46,20 +47,28 @@ export default function RegisterScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleRegister = async () => {
+    // Guard against double-taps
+    if (isProcessing.current) return;
+    isProcessing.current = true;
+
     if (!fullName || !email || !password || !phone) {
       Alert.alert("Error", "Please fill in all fields");
+      isProcessing.current = false;  // Reset guard
       return;
     }
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters");
+      isProcessing.current = false;  // Reset guard
       return;
     }
-    const { allowed, remainingMs } = await checkRateLimit('register:' + email, 3, 60 * 60_000);
+    const { allowed, remainingMs } = await checkRateLimit('register:' + email, 3, 30 * 60_000);
     if (!allowed) {
       const mins = Math.ceil(remainingMs / 60_000);
       Alert.alert("Too many attempts", `Please try again in ${mins} minute(s).`);
+      isProcessing.current = false;  // Reset guard
       return;
     }
+
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -72,12 +81,14 @@ export default function RegisterScreen() {
     if (error || !data.user) {
       Alert.alert("Registration Failed", error?.message || "Unknown error");
       setLoading(false);
+      isProcessing.current = false;  // Reset guard
       return;
     }
 
     setLoading(false);
     setShowVerify(true);
     startResendTimer();
+    isProcessing.current = false;  // Reset guard
   };
 
   const handleVerify = async () => {
@@ -284,9 +295,9 @@ export default function RegisterScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.createBtn, loading && styles.createBtnDisabled]}
+            style={[styles.createBtn, (loading || isProcessing.current) && styles.createBtnDisabled]}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={loading || isProcessing.current}
           >
             {loading ? (
               <ActivityIndicator color={theme.textPrimary} />
