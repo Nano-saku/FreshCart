@@ -11,14 +11,18 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthStore } from "../../src/stores/authStore";
 import { BlurView } from "expo-blur";
-import { Store, Package, ListOrdered, TrendingUp, Settings } from "lucide-react-native";
+import { Store, Package, ListOrdered, TrendingUp, Settings, Bell } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { useNotifications } from "../../src/contexts/NotificationContext";
+import { useOrderNotifications } from "../../src/contexts/useOrderNotifications";
+import NotificationBell from "../../src/components/NotificationBell";
 import { router, useFocusEffect } from "expo-router";
 import { useMemo } from 'react';
 
 export default function SellerDashboard() {
   const { profile } = useAuthStore();
   const { theme } = useTheme();
+  const { unreadCount, sendLowStockNotification } = useNotifications();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [store, setStore] = useState<any>(null);
   const [stats, setStats] = useState({
@@ -27,6 +31,10 @@ export default function SellerDashboard() {
     totalSales: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+
+  // Set up real-time order notifications
+  useOrderNotifications(store?.id);
 
   const fetchStoreData = async () => {
     setLoading(true);
@@ -49,8 +57,9 @@ export default function SellerDashboard() {
       // 3. Get active orders and total sales
       const { data: orders } = await supabase
         .from("orders")
-        .select("status, total_amount")
-        .eq("store_id", storeData.id);
+        .select("*, customer:profiles(full_name)")
+        .eq("store_id", storeData.id)
+        .order("created_at", { ascending: false });
 
       const activeOrders =
         orders?.filter((o) => !["delivered", "cancelled"].includes(o.status))
@@ -65,6 +74,27 @@ export default function SellerDashboard() {
         activeOrders,
         totalSales,
       });
+
+      // Set recent orders
+      setRecentOrders(orders?.slice(0, 5) || []);
+
+      // Check for low stock products and send notifications
+      const { data: lowStockProducts } = await supabase
+        .from("store_products")
+        .select("*, product:products(name)")
+        .eq("store_id", storeData.id)
+        .lte("stock_qty", 5)
+        .gt("stock_qty", 0);
+
+      if (lowStockProducts && lowStockProducts.length > 0) {
+        for (const product of lowStockProducts) {
+          await sendLowStockNotification(
+            product.id,
+            product.product?.name || 'Unknown Product',
+            product.stock_qty
+          );
+        }
+      }
     } else {
       setStore(null);
     }
@@ -99,8 +129,16 @@ export default function SellerDashboard() {
     <AppScreen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, {profile?.full_name}</Text>
-          <Text style={styles.title}>Seller Dashboard</Text>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.greeting}>Hello, {profile?.full_name}</Text>
+              <Text style={styles.title}>Seller Dashboard</Text>
+            </View>
+            <NotificationBell
+              onPress={() => router.push("/(seller)/notifications")}
+              size={24}
+            />
+          </View>
         </View>
 
         {!store ? (
@@ -162,12 +200,58 @@ export default function SellerDashboard() {
                 <Text style={styles.statLabel}>My Products</Text>
               </View>
             </View>
+
+            {/* Recent Orders Section */}
+            {recentOrders.length > 0 && (
+              <View style={styles.recentOrdersSection}>
+                <Text style={styles.sectionTitle}>Recent Orders</Text>
+                {recentOrders.map((order) => (
+                  <TouchableOpacity
+                    key={order.id}
+                    style={styles.orderCard}
+                    onPress={() => router.push(`/(seller)/orders?id=${order.id}`)}
+                  >
+                    <View style={styles.orderInfo}>
+                      <Text style={styles.orderCustomer}>
+                        {order.customer?.full_name || 'Customer'}
+                      </Text>
+                      <Text style={styles.orderAmount}>
+                        ₱{order.total_amount?.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.orderStatus,
+                      { backgroundColor: getStatusColor(order.status) + '20' }
+                    ]}>
+                      <Text style={[
+                        styles.orderStatusText,
+                        { color: getStatusColor(order.status) }
+                      ]}>
+                        {order.status?.replace(/_/g, ' ')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
     </AppScreen>
   );
 }
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending': return '#FF9800';
+    case 'confirmed': return '#2196F3';
+    case 'preparing': return '#9C27B0';
+    case 'out_for_delivery': return '#FF5722';
+    case 'delivered': return '#4CAF50';
+    case 'cancelled': return '#F44336';
+    default: return '#666';
+  }
+};
 
 const createStyles = (theme: any) => StyleSheet.create({
   container: {
@@ -176,6 +260,11 @@ const createStyles = (theme: any) => StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   greeting: {
     color: theme.textMuted,
@@ -287,5 +376,49 @@ const createStyles = (theme: any) => StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: theme.border,
+  },
+  recentOrdersSection: {
+    marginTop: 10,
+  },
+  sectionTitle: {
+    color: theme.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  orderCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginBottom: 8,
+  },
+  orderInfo: {
+    flex: 1,
+  },
+  orderCustomer: {
+    color: theme.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  orderAmount: {
+    color: theme.accent,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  orderStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  orderStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
 });

@@ -69,6 +69,7 @@ export default function CustomerLayout() {
       <Tabs.Screen name="profile/payment-methods" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="profile/notifications" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="profile/settings" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="notification" options={{ href: null, headerShown: false }} />
     </Tabs>
   );
 }

@@ -14,8 +14,10 @@ import { useQuery } from "@tanstack/react-query";
 import { AppScreen } from "../../src/components/AppScreen";
 import { ProductCard } from "../../src/components/ProductCard";
 import { StoreSelector } from "../../src/components/StoreSelector";
+import NotificationBell from "../../src/components/NotificationBell";
 import { supabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/contexts/ThemeContext";
+import { useNotifications } from "../../src/contexts/NotificationContext";
 import { router } from "expo-router";
 import { Search, Bell, ShoppingBag, ChevronRight } from "lucide-react-native";
 
@@ -39,6 +41,7 @@ const DEFAULT_CATEGORIES = [
 
 export default function HomeScreen() {
   const { theme } = useTheme();
+  const { unreadCount } = useNotifications();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -199,6 +202,10 @@ export default function HomeScreen() {
                 >
                   <Bell size={22} color={theme.textPrimary} />
                 </TouchableOpacity>
+                <NotificationBell
+                  onPress={() => router.push("/(customer)/notifications")}
+                  size={22}
+                />
               </View>
             </View>
 

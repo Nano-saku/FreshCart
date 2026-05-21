@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "../src/contexts/ThemeContext";
+import { NotificationProvider } from "../src/contexts/NotificationContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "../src/lib/supabase";
 import { GeocodingService } from '../src/services/geocoding';
@@ -15,7 +16,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <RootLayoutNav />
+        <NotificationProvider>
+          <RootLayoutNav />
+        </NotificationProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
@@ -27,9 +30,11 @@ function RootLayoutNav() {
   const { theme } = useTheme();
   const { setSession, fetchProfile } = useAuthStore();
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     GeocodingService.requestPermissions();
   }, []);
+
   useEffect(() => {
     // Check initial session on app start
     supabase.auth.getSession().then(async ({ data: { session } }) => {
