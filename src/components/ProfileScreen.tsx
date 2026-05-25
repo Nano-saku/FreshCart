@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { useAuthStore } from "../stores/authStore";
 import { AppScreen } from "./AppScreen";
 import { useTheme } from "../contexts/ThemeContext";
+import { useNotificationStore } from "../stores/notificationStore";
 import {
   LogOut, User, Shield, ChevronRight,
   Settings, Bell, MapPin, CreditCard, Moon, Sun,
@@ -19,6 +20,7 @@ import { useMemo } from 'react';
 export default function ProfileScreen() {
   const { theme, isDark, toggleTheme, themeMode } = useTheme();
   const { user, profile, signOut, softSignOut, biometricEnabled, setBiometricEnabled } = useAuthStore();
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [biometricToggle, setBiometricToggle] = useState(biometricEnabled);
@@ -112,7 +114,7 @@ export default function ProfileScreen() {
     {
       icon: Bell,
       label: "Notifications",
-      onPress: () => Alert.alert("Coming Soon", "Notifications will be available in a future update."),
+      onPress: () => router.push("/profile/notifications"),
       roles: ["customer", "seller", "admin"],
     },
     {
@@ -217,20 +219,30 @@ export default function ProfileScreen() {
         {/* Menu Items */}
         <Text style={styles.sectionTitle}>{getRoleTitle()}</Text>
         <View style={styles.menuSection}>
-          {allMenuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              activeOpacity={0.7}
-              onPress={item.onPress}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: theme.primary + "10" }]}>
-                <item.icon size={20} color={theme.primary} />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <ChevronRight size={20} color={theme.textMuted} />
-            </TouchableOpacity>
-          ))}
+          {allMenuItems.map((item, index) => {
+            const isNotif = item.label === "Notifications";
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: theme.primary + "10" }]}>
+                  <item.icon size={20} color={theme.primary} />
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                {isNotif && unreadCount > 0 && (
+                  <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.unreadBadgeText}>
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </Text>
+                  </View>
+                )}
+                <ChevronRight size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Security */}
@@ -375,6 +387,8 @@ const createStyles = (theme: any) => StyleSheet.create({
   menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 16, backgroundColor: theme.surface, marginBottom: 1 },
   menuIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", marginRight: 14 },
   menuLabel: { flex: 1, color: theme.textPrimary, fontSize: 16, fontWeight: "500" },
+  unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, marginRight: 6 },
+  unreadBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   sectionTitle: { color: theme.textMuted, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, marginLeft: 16, marginTop: 8 },
   card: { borderRadius: 16, backgroundColor: theme.surface, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2, marginHorizontal: 16, marginBottom: 12 },
   logoutCard: { borderRadius: 16, backgroundColor: theme.surface, shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2, marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: theme.error + "20" },

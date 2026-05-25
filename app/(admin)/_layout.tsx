@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
-import { LayoutDashboard, Package, Store, Users, ClipboardList, User, View } from "lucide-react-native";
+import { LayoutDashboard, Package, Store, Users, User } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
-import { ActivityIndicator, Alert } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../src/stores/authStore";
@@ -46,6 +46,7 @@ export default function AdminLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
@@ -55,8 +56,17 @@ export default function AdminLayout() {
           height: 70,
           paddingBottom: 8,
           paddingTop: 8,
+          elevation: 8,
+          shadowColor: theme.shadowColorStrong,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 1,
+          shadowRadius: 12,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Dashboard", tabBarIcon: ({ color, size }) => <LayoutDashboard size={size || 24} color={color} /> }} />

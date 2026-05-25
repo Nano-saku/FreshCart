@@ -268,7 +268,7 @@ export default function AdminUsersScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={users}
@@ -276,7 +276,7 @@ export default function AdminUsersScreen() {
           contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <TouchableOpacity onPress={() => openUserActions(item)}>
-              <BlurView intensity={30} tint="light" style={styles.card}>
+              <View style={styles.card}>
                 <View style={styles.cardInner}>
                   <View style={styles.avatarPlaceholder}>
                     <User size={24} color={theme.accent} />
@@ -335,7 +335,7 @@ export default function AdminUsersScreen() {
 
                   <ChevronRight size={20} color={theme.textMuted} />
                 </View>
-              </BlurView>
+              </View>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -347,7 +347,7 @@ export default function AdminUsersScreen() {
       {/* User Actions Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <BlurView intensity={60} tint="dark" style={styles.modalCard}>
+          <View style={styles.modalCard}>
             <View style={styles.modalInner}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Manage User</Text>
@@ -355,7 +355,7 @@ export default function AdminUsersScreen() {
                   onPress={() => setModalVisible(false)}
                   style={styles.closeBtn}
                 >
-                  <X size={24} color="#fff" />
+                  <X size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
               </View>
 
@@ -473,7 +473,7 @@ export default function AdminUsersScreen() {
                 </>
               )}
             </View>
-          </BlurView>
+          </View>
         </View>
       </Modal>
     </AppScreen>
@@ -499,7 +499,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.shadowColorStrong,
+    borderColor: theme.border,
   },
   cardInner: {
     backgroundColor: theme.surface,
@@ -512,9 +512,11 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   nameRow: {
     flexDirection: "row",
@@ -559,7 +561,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     marginHorizontal: 4,
   },
   dateText: {
-    color: "rgba(255,255,255,0.3)",
+    color: theme.textMuted,
     fontSize: 11,
     marginTop: 4,
   },
@@ -579,11 +581,12 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.shadowColorStrong,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
     maxHeight: "85%",
   },
   modalInner: {
-    backgroundColor: "rgba(26,74,26,0.95)",
+    backgroundColor: theme.surface,
     padding: 24,
     gap: 4,
   },
@@ -594,7 +597,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     marginBottom: 16,
   },
   modalTitle: {
-    color: "#fff",
+    color: theme.textPrimary,
     fontSize: 20,
     fontWeight: "700",
   },
@@ -602,31 +605,34 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   userInfo: {
     alignItems: "center",
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    borderBottomColor: theme.border,
   },
   userNameLarge: {
-    color: "#fff",
+    color: theme.textPrimary,
     fontSize: 18,
     fontWeight: "700",
   },
   userEmail: {
-    color: theme.textMuted,
+    color: theme.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
   userId: {
-    color: "rgba(255,255,255,0.3)",
+    color: theme.textMuted,
     fontSize: 12,
     marginTop: 4,
+    opacity: 0.8,
   },
   label: {
     color: theme.textMuted,
@@ -643,9 +649,9 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: theme.border,
     alignItems: "center",
   },
   roleChipActive: {
@@ -653,12 +659,12 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderColor: theme.accent,
   },
   roleChipText: {
-    color: theme.textMuted,
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
   roleChipTextActive: {
-    color: "#fff",
+    color: theme.surface,
     fontWeight: "700",
   },
   actionBtn: {
@@ -677,7 +683,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.border,
     marginVertical: 16,
   },
   banBtn: {

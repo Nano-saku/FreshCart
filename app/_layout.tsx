@@ -8,6 +8,8 @@ import { GeocodingService } from '../src/services/geocoding';
 import { ActivityIndicator, View } from "react-native";
 import { useTheme } from "../src/contexts/ThemeContext";
 import { useAuthStore } from "../src/stores/authStore";
+import { NotificationBanner } from "../src/components/NotificationBanner";
+import { useNotificationStore } from "../src/stores/notificationStore";
 
 const queryClient = new QueryClient();
 
@@ -25,8 +27,20 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { theme } = useTheme();
-  const { setSession, fetchProfile } = useAuthStore();
+  const { setSession, fetchProfile, user } = useAuthStore();
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      useNotificationStore.getState().fetchNotifications();
+      useNotificationStore.getState().subscribeToNotifications(user.id);
+    } else {
+      useNotificationStore.getState().unsubscribe();
+    }
+    return () => {
+      useNotificationStore.getState().unsubscribe();
+    };
+  }, [user?.id]);
   useEffect(() => {
     GeocodingService.requestPermissions();
   }, []);
@@ -118,6 +132,7 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="auto" />
+      <NotificationBanner />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />

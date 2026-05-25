@@ -167,10 +167,10 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderRadius: 18,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.shadowColorStrong,
+    borderColor: theme.border,
   },
   statInner: { backgroundColor: theme.surface, padding: 18, gap: 6 },
-  statVal: { color: theme.textMuted, fontSize: 24, fontWeight: "800" },
+  statVal: { color: theme.textPrimary, fontSize: 24, fontWeight: "800" },
   statLabel: { color: theme.textMuted, fontSize: 12 },
   sectionTitle: {
     color: theme.textPrimary,
@@ -182,7 +182,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.shadowColorStrong,
+    borderColor: theme.border,
   },
   orderInner: {
     backgroundColor: theme.surface,

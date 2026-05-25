@@ -191,7 +191,7 @@ export default function AdminStoresScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
           renderItem={({ item }) => (
-            <BlurView intensity={30} tint="light" style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={styles.iconBox}>
                   <Store size={24} color={theme.accent} />
@@ -269,7 +269,7 @@ export default function AdminStoresScreen() {
                   </View>
                 </View>
               </View>
-            </BlurView>
+            </View>
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>No stores yet. Tap + to add one.</Text>
@@ -280,7 +280,7 @@ export default function AdminStoresScreen() {
       {/* Add / Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <BlurView intensity={60} tint="dark" style={styles.modalCard}>
+          <View style={styles.modalCard}>
             <View style={styles.modalInner}>
               <Text style={styles.modalTitle}>
                 {editStore ? "Edit store" : "Add store"}
@@ -374,16 +374,16 @@ export default function AdminStoresScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color={theme.textPrimary} size="small" />
+                    <ActivityIndicator color={theme.surface} size="small" />
                   ) : (
-                    <Text style={{ color: theme.textPrimary, fontWeight: "700" }}>
+                    <Text style={{ color: theme.surface, fontWeight: "700" }}>
                       {editStore ? "Update" : "Save"}
                     </Text>
                   )}
                 </TouchableOpacity>
               </View>
             </View>
-          </BlurView>
+          </View>
         </View>
       </Modal>
     </AppScreen>
@@ -424,7 +424,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: theme.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -445,7 +445,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   },
   badgeText: { fontSize: 11, fontWeight: "600" },
   meta: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
-  owner: { color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 4 },
+  owner: { color: theme.textMuted, fontSize: 11, marginTop: 4 },
   actions: {
     flexDirection: "row",
     alignItems: "center",
@@ -456,9 +456,11 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   empty: {
     color: theme.textMuted,
@@ -476,9 +478,10 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.shadowColor,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
   },
-  modalInner: { backgroundColor: "rgba(26,74,26,0.9)", padding: 24, gap: 2 },
+  modalInner: { backgroundColor: theme.surface, padding: 24, gap: 2 },
   modalTitle: {
     color: theme.textPrimary,
     fontSize: 18,
@@ -492,13 +495,13 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     marginTop: 10,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     borderRadius: 12,
     padding: 14,
     color: theme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: theme.border,
   },
   switchRow: {
     flexDirection: "row",

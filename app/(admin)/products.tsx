@@ -154,7 +154,7 @@ export default function AdminProductsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
           renderItem={({ item }) => (
-            <BlurView intensity={30} tint="light" style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productName}>{item.name}</Text>
@@ -182,7 +182,7 @@ export default function AdminProductsScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </BlurView>
+            </View>
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>No products yet. Tap + to add one.</Text>
@@ -192,7 +192,7 @@ export default function AdminProductsScreen() {
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <BlurView intensity={60} tint="dark" style={styles.modalCard}>
+          <View style={styles.modalCard}>
             <View style={styles.modalInner}>
               <Text style={styles.modalTitle}>
                 {editProduct ? "Edit product" : "Add product"}
@@ -295,16 +295,16 @@ export default function AdminProductsScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator color={theme.textPrimary} size="small" />
+                    <ActivityIndicator color={theme.surface} size="small" />
                   ) : (
-                    <Text style={{ color: theme.textPrimary, fontWeight: "700" }}>
+                    <Text style={{ color: theme.surface, fontWeight: "700" }}>
                       Save
                     </Text>
                   )}
                 </TouchableOpacity>
               </View>
             </View>
-          </BlurView>
+          </View>
         </View>
       </Modal>
     </AppScreen>
@@ -353,9 +353,11 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   modalOverlay: {
     flex: 1,
@@ -367,9 +369,10 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderTopRightRadius: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.surface,
+    borderColor: theme.border,
+    backgroundColor: theme.surface,
   },
-  modalInner: { backgroundColor: "rgba(26,74,26,0.85)", padding: 24, gap: 4 },
+  modalInner: { backgroundColor: theme.surface, padding: 24, gap: 4 },
   modalTitle: {
     color: theme.textPrimary,
     fontSize: 18,
@@ -383,13 +386,13 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     marginTop: 10,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     borderRadius: 12,
     padding: 14,
     color: theme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: theme.border,
   },
   categoryList: {
     flexDirection: "row",
@@ -401,21 +404,21 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: theme.surfaceVariant,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: theme.border,
   },
   categoryChipActive: {
     backgroundColor: theme.primary,
     borderColor: theme.accent,
   },
   categoryChipText: {
-    color: theme.textMuted,
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: "500",
   },
   categoryChipTextActive: {
-    color: theme.textPrimary,
+    color: theme.surface,
     fontWeight: "700",
   },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
@@ -424,7 +427,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.shadowColor,
+    borderColor: theme.border,
     alignItems: "center",
   },
   saveBtn: {
