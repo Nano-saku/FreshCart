@@ -156,15 +156,10 @@ export default function HomeScreen() {
 
   // See All handlers
   const handleSeeAllCategories = () => {
-    router.push("/(customer)/categories");
+    router.push("/search");
   };
 
-  const handleSeeAllProducts = () => {
-    router.push({
-      pathname: "/(customer)/product",
-      params: selectedStore ? { storeId: selectedStore } : {},
-    });
-  };
+  
 
   // Define all sections for the main FlatList
   const sections = [
@@ -286,9 +281,6 @@ export default function HomeScreen() {
                   ? "Store Products"
                   : "Featured Products"}
             </Text>
-            <TouchableOpacity onPress={handleSeeAllProducts}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
           </View>
         );
 

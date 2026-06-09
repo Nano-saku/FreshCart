@@ -25,7 +25,10 @@ interface CartState {
   removeItem: (cartItemId: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
+  clearStoreItems: (storeId: string) => Promise<void>;
   total: () => number;
+  getStoreTotal: (storeId: string) => number;
+  getStoreGroups: () => Map<string, CartItem[]>;
   hasMultipleStores: () => boolean;
 }
 const extractFirst = <T>(data: T | T[] | null | undefined): T | undefined => {
@@ -143,8 +146,12 @@ set({ items, loading: false });
 }
     }
 
-    // Background DB operation - fire and forget
-    // Using upsert pattern to handle both insert and update
+    // Background DB operation — always pass store_id explicitly so we never
+    // rely on the set_cart_item_store trigger to populate it. If we omit
+    // store_id here and then call fetchCart() before the trigger commits,
+    // the returned row has store_id = null and multi-store grouping breaks.
+    const storeId = get().items.find(i => i.store_product_id === storeProductId)?.store_id;
+
     const { data: existing } = await supabase
       .from("cart_items")
       .select("id, quantity")
@@ -153,21 +160,26 @@ set({ items, loading: false });
       .maybeSingle();
 
     if (existing) {
-      await supabase
+      const { error } = await supabase
         .from("cart_items")
         .update({ quantity: existing.quantity + quantity })
         .eq("id", existing.id);
+      if (error) {
+        logger.error("Update cart item error:", error);
+        await get().fetchCart(); // rollback optimistic update
+      }
     } else {
-      await supabase.from("cart_items").insert({
+      const { error } = await supabase.from("cart_items").insert({
         customer_id: user.id,
         store_product_id: storeProductId,
+        store_id: storeId,   // explicit — do not rely on trigger timing
         quantity,
       });
+      if (error) {
+        logger.error("Insert cart item error:", error);
+        await get().fetchCart(); // rollback optimistic update
+      }
     }
-
-    // Only refetch if the operation might have failed
-    // This keeps the UI snappy while ensuring consistency
-    await get().fetchCart();
   },
 
   removeItem: async (cartItemId: string) => {
@@ -226,6 +238,41 @@ set({ items, loading: false });
 
   total: () =>
     get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+
+  // Sum of items belonging to a specific store
+  getStoreTotal: (storeId: string) =>
+    get().items
+      .filter(item => item.store_id === storeId)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0),
+
+  // Items grouped by store_id — used by checkout multi-store breakdown
+  getStoreGroups: () => {
+    const groups = new Map<string, CartItem[]>();
+    for (const item of get().items) {
+      if (!item.store_id) continue;
+      const existing = groups.get(item.store_id) ?? [];
+      existing.push(item);
+      groups.set(item.store_id, existing);
+    }
+    return groups;
+  },
+
+  // Clear only the items belonging to a specific store (post-checkout)
+  clearStoreItems: async (storeId: string) => {
+    const user = getUser();
+    if (!user) return;
+    const storeItemIds = get().items
+      .filter(item => item.store_id === storeId)
+      .map(item => item.id);
+    if (storeItemIds.length === 0) return;
+    await supabase
+      .from("cart_items")
+      .delete()
+      .in("id", storeItemIds);
+    set(state => ({
+      items: state.items.filter(item => item.store_id !== storeId),
+    }));
+  },
 
   // Returns true if cart has items from more than one store
   hasMultipleStores: () => {

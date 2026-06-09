@@ -66,8 +66,14 @@ function RootLayoutNav() {
     //   • authStore signOut/softSignOut (explicit logouts)
     //   • login.tsx (after successful login/biometric restore)
     //   • the segment guard below (protecting seller/admin routes)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Only sync store on real new sessions (e.g. login from another device/tab)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESHED fires every time the app resumes from background.
+      // We must NOT call setSession here — it clears profile momentarily,
+      // which causes the segments guard to misfire and redirect to /(customer).
+      // The session is already valid; just let Supabase handle it silently.
+      if (event === "TOKEN_REFRESHED") return;
+
+      // Only sync store on genuine new sessions (e.g. login from another device/tab).
       // Do NOT navigate from here — it races with login.tsx and authStore routing.
       // Do NOT call setSession(null) on SIGNED_OUT — authStore already clears the store.
       if (session?.user) {
@@ -87,6 +93,11 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === "(auth)";
 
     const { user, profile } = useAuthStore.getState();
+
+    // If user exists but profile hasn't loaded yet, don't redirect.
+    // This prevents the guard from misfiring during background resume
+    // when onAuthStateChange re-triggers and profile is momentarily null.
+    if (user && !profile) return;
 
     // Protected routes with no user → send to login
     if ((inSellerGroup || inAdminGroup) && !user) {

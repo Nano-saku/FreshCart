@@ -83,6 +83,12 @@ export default function SellerLayout() {
           title: "Store Settings",
         }}
       />
+      <Tabs.Screen
+        name="(order)/[id]"
+        options={{
+          href: null
+        }}
+      />
     </Tabs>
   );
 }

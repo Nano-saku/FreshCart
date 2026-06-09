@@ -13,8 +13,13 @@ export function useAdminGuard() {
       router.replace("/(auth)/login");
       return;
     }
-    if (profile && profile.role !== "admin" && profile.role !== "seller") {
-      router.replace("/(customer)/index");
+    if (profile && profile.role !== "admin") {
+      // Sellers and customers have no access to admin screens
+      if (profile.role === "seller") {
+        router.replace("/(seller)/index");
+      } else {
+        router.replace("/(customer)/index");
+      }
     }
   }, [session, profile, segments]);
 

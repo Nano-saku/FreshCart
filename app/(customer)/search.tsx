@@ -32,6 +32,7 @@ const RECENT_SEARCHES = [
   "Grape",
   "Brown bread",
 ];
+
 const TRENDING = [
   "Organic Vegetables",
   "Fresh Fruits",
@@ -54,19 +55,43 @@ export default function SearchScreen() {
     queryKey: ["search", query],
     queryFn: async () => {
       if (!query.trim()) return [];
+      
       const { data, error } = await supabase
         .from("store_products")
-        .select(
-          `*, product:products(*, category:categories(name)), store:stores(name)`,
-        )
+        .select(`
+          id,
+          price,
+          stock_qty,
+          is_available,
+          product:products(
+            id,
+            name,
+            image_url,
+            unit,
+            description,
+            category:categories(name)
+          ),
+          store:stores(name)
+        `)
         .ilike("product.name", `%${query}%`)
         .eq("is_available", true)
-        .gt("stock_qty", 0);
+        .gt("stock_qty", 0)
+        .limit(20);
 
-      if (error) throw error;
-      return data ?? [];
+      if (error) {
+        console.error("Search error:", error);
+        throw error;
+      }
+      
+      // Filter out any results where product is null
+      const validResults = (data || []).filter(item => 
+        item.product !== null && item.product !== undefined
+      );
+      
+      return validResults;
     },
     enabled: query.length > 1,
+    staleTime: 1000 * 60, // Cache for 1 minute
   });
 
   const onRefresh = useCallback(async () => {
@@ -77,6 +102,10 @@ export default function SearchScreen() {
 
   const handleSearch = (text: string) => {
     setQuery(text);
+    // Add to recent searches
+    if (text.trim() && !recentSearches.includes(text.trim())) {
+      setRecentSearches(prev => [text.trim(), ...prev.slice(0, 5)]);
+    }
   };
 
   const clearSearch = () => {
@@ -87,6 +116,14 @@ export default function SearchScreen() {
   const removeRecent = (item: string) => {
     setRecentSearches((prev) => prev.filter((r) => r !== item));
   };
+
+  const renderProduct = useCallback(({ item }: { item: any }) => {
+    return (
+      <View style={styles.productCardContainer}>
+        <ProductCard item={item} />
+      </View>
+    );
+  }, [styles]);
 
   return (
     <AppScreen>
@@ -128,34 +165,40 @@ export default function SearchScreen() {
           </View>
 
           {isLoading && (
-            <ActivityIndicator
-              color={theme.primary}
-              style={{ marginTop: 40 }}
-            />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={theme.primary} size="large" />
+              <Text style={styles.loadingText}>Searching products...</Text>
+            </View>
           )}
 
           {!isLoading && results?.length === 0 && (
             <View style={styles.emptyContainer}>
               <Search size={48} color={theme.textMuted} />
               <Text style={styles.emptyTitle}>No products found</Text>
-              <Text style={styles.emptySub}>Try a different search term</Text>
+              <Text style={styles.emptySub}>
+                Try a different search term or browse categories
+              </Text>
             </View>
           )}
 
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            renderItem={({ item }) => <ProductCard item={item} />}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.primary}
-              />
-            }
-          />
+          {!isLoading && results && results.length > 0 && (
+            <FlatList
+              data={results}
+              keyExtractor={(item) => item.id?.toString()}
+              numColumns={2}
+              renderItem={renderProduct}
+              contentContainerStyle={styles.productList}
+              columnWrapperStyle={styles.productRow}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.primary}
+                />
+              }
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </>
       )}
 
@@ -167,30 +210,34 @@ export default function SearchScreen() {
           ListHeaderComponent={
             <>
               {/* Recent Searches */}
-              <View style={styles.sectionHeader}>
-                <Clock size={18} color={theme.primary} />
-                <Text style={styles.sectionTitle}>Recent</Text>
-                <TouchableOpacity onPress={() => setRecentSearches([])}>
-                  <Text style={styles.clearAll}>Clear</Text>
-                </TouchableOpacity>
-              </View>
+              {recentSearches.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Clock size={18} color={theme.primary} />
+                    <Text style={styles.sectionTitle}>Recent</Text>
+                    <TouchableOpacity onPress={() => setRecentSearches([])}>
+                      <Text style={styles.clearAll}>Clear all</Text>
+                    </TouchableOpacity>
+                  </View>
 
-              {recentSearches.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.recentItem}
-                  onPress={() => handleSearch(item)}
-                >
-                  <Clock size={16} color={theme.textMuted} />
-                  <Text style={styles.recentText}>{item}</Text>
-                  <TouchableOpacity
-                    onPress={() => removeRecent(item)}
-                    style={styles.recentRemove}
-                  >
-                    <X size={16} color={theme.textMuted} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
+                  {recentSearches.map((item, index) => (
+                    <TouchableOpacity
+                      key={`recent-${index}`}
+                      style={styles.recentItem}
+                      onPress={() => handleSearch(item)}
+                    >
+                      <Clock size={16} color={theme.textMuted} />
+                      <Text style={styles.recentText}>{item}</Text>
+                      <TouchableOpacity
+                        onPress={() => removeRecent(item)}
+                        style={styles.recentRemove}
+                      >
+                        <X size={16} color={theme.textMuted} />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
 
               {/* Trending */}
               <View style={[styles.sectionHeader, { marginTop: 24 }]}>
@@ -201,7 +248,7 @@ export default function SearchScreen() {
               <View style={styles.trendingGrid}>
                 {TRENDING.map((item, index) => (
                   <TouchableOpacity
-                    key={index}
+                    key={`trending-${index}`}
                     style={styles.trendingChip}
                     onPress={() => handleSearch(item)}
                   >
@@ -209,6 +256,16 @@ export default function SearchScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Empty state when no recent searches */}
+              {recentSearches.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Search size={32} color={theme.textMuted} />
+                  <Text style={styles.emptyStateText}>
+                    Start searching for your favorite products
+                  </Text>
+                </View>
+              )}
             </>
           }
         />
@@ -217,15 +274,18 @@ export default function SearchScreen() {
   );
 }
 
-const createStyles = (theme: typeof import("../../src/constants/colors").lightTheme) => StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
   header: {
     marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   title: {
     color: theme.textPrimary,
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
     marginBottom: 16,
+    letterSpacing: -0.5,
   },
   searchBar: {
     flexDirection: "row",
@@ -239,7 +299,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     borderColor: theme.border,
     shadowColor: theme.shadowColor,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 2,
   },
@@ -262,21 +322,43 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   },
   resultsHeader: {
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   resultsText: {
     color: theme.textSecondary,
     fontSize: 14,
     fontWeight: "500",
   },
+  loadingContainer: {
+    alignItems: "center",
+    paddingTop: 60,
+    gap: 12,
+  },
+  loadingText: {
+    color: theme.textSecondary,
+    fontSize: 14,
+  },
+  productList: {
+    paddingHorizontal: 10,
+    paddingBottom: 100,
+  },
+  productRow: {
+    justifyContent: "space-between",
+  },
+  productCardContainer: {
+    flex: 1,
+    maxWidth: '50%',
+  },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     color: theme.textPrimary,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     flex: 1,
   },
@@ -289,6 +371,7 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: theme.divider,
     gap: 12,
@@ -305,14 +388,16 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   trendingChip: {
-    backgroundColor: theme.primary + "10",
+    backgroundColor: theme.primary + "15",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.primary + "20",
+    borderColor: theme.primary + "25",
   },
   trendingText: {
     color: theme.primary,
@@ -333,5 +418,18 @@ const createStyles = (theme: typeof import("../../src/constants/colors").lightTh
   emptySub: {
     color: theme.textSecondary,
     fontSize: 14,
+    textAlign: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingTop: 40,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyStateText: {
+    color: theme.textSecondary,
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

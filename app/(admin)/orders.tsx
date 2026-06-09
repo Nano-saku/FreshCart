@@ -43,8 +43,7 @@ export default function AdminOrdersScreen() {
         .from("orders")
         .select("*, store:stores(name), customer:profiles(full_name, phone), order_items(id)")
         .order("created_at", { ascending: false });
-      logger.log(data);
-      if (error) throw logger.error;
+      if (error) throw error;
       return data ?? [];
     },
     refetchInterval: 30000, // Auto-refresh every 30s

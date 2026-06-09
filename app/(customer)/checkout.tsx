@@ -7,12 +7,12 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { supabase } from "../../src/lib/supabase";
 import { useCartStore } from "../../src/stores/cartStore";
 import { useAuthStore } from "../../src/stores/authStore";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { validate } from "../../src/lib/validate";
 import { GeocodingService } from "../../src/services/geocoding";
 import {
   ChevronLeft, MapPin, FileText, CreditCard,
-  Truck, CheckCircle2, Phone,
+  Truck, CheckCircle2, Phone, Store, Package,
 } from "lucide-react-native";
 import { useTheme } from "../../src/contexts/ThemeContext";
 import { logger } from "../../src/lib/logger";
@@ -32,7 +32,8 @@ interface SavedAddress {
 const CURRENCY = "₱";
 
 export default function CheckoutScreen() {
-  const { items, total, clearCart } = useCartStore();
+  const { store_id } = useLocalSearchParams<{ store_id?: string }>();
+  const { items, total, clearCart, getStoreGroups, getStoreTotal, clearStoreItems } = useCartStore();
   const { user } = useAuthStore();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -45,24 +46,28 @@ export default function CheckoutScreen() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash_on_delivery");
-  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [placedOrders, setPlacedOrders] = useState<string[]>([]);
   const [deliveryFee, setDeliveryFee] = useState(50);
   const [customerDistance, setCustomerDistance] = useState(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
-
-  const subtotal = total();
-  const grandTotal = subtotal + deliveryFee;
   const [isOutOfRange, setIsOutOfRange] = useState(false);
   const [maxRadius, setMaxRadius] = useState(20);
 
+  // Items filtered by store_id param if coming from single-store checkout
+  const filteredItems = store_id
+    ? items.filter(item => item.store_id === store_id)
+    : items;
 
-  const storeIds = [...new Set(items.map((i) => (i as any).store_id).filter(Boolean))];
+  const subtotal = store_id ? getStoreTotal(store_id) : total();
+  const grandTotal = subtotal + deliveryFee;
+
+  const storeIds = [...new Set(filteredItems.map((i) => i.store_id).filter(Boolean))];
   const isMultiStore = storeIds.length > 1;
 
   // Reset checkout state on mount
   useEffect(() => {
     setStep(1);
-    setPlacedOrderId(null);
+    setPlacedOrders([]);
     setAddress("");
     setNotes("");
     setDeliveryFee(50);
@@ -195,57 +200,110 @@ export default function CheckoutScreen() {
     if (!address.trim()) return Alert.alert("Required", "Please enter a delivery address.");
     if (!validate.address(address))
       return Alert.alert("Error", "Address must be 5–300 characters.");
-    if (items.length === 0) return Alert.alert("Error", "Your cart is empty.");
+    if (filteredItems.length === 0) return Alert.alert("Error", "Your cart is empty.");
     if (!user) return Alert.alert("Sign In Required", "Please sign in to place an order.");
+    if (isOutOfRange) return Alert.alert("Out of Range", "Your delivery address is outside the store's delivery radius.");
 
     setLoading(true);
+    const createdOrderIds: string[] = [];
+
     try {
-      const { data: sp, error: spErr } = await supabase
-        .from("store_products")
-        .select("store_id")
-        .eq("id", items[0].store_product_id)
-        .single();
+      // Safety check: every item must have a store_id populated.
+      // If any are missing (trigger timing race on insert), refetch first.
+      const missingStore = filteredItems.filter(i => !i.store_id);
+      if (missingStore.length > 0) {
+        await useCartStore.getState().fetchCart();
+        const refreshed = store_id
+          ? useCartStore.getState().items.filter(i => i.store_id === store_id)
+          : useCartStore.getState().items;
+        if (refreshed.some(i => !i.store_id)) {
+          throw new Error(
+            "Some cart items are missing store information. Please remove them and re-add from the store page."
+          );
+        }
+        filteredItems.splice(0, filteredItems.length, ...refreshed);
+      }
 
-      if (spErr || !sp) throw new Error("Could not resolve store.");
+      // Group items by store — each store gets its own order
+      const itemsByStore = new Map<string, typeof filteredItems>();
+      filteredItems.forEach(item => {
+        const storeId = item.store_id;
+        const storeItems = itemsByStore.get(storeId) || [];
+        storeItems.push(item);
+        itemsByStore.set(storeId, storeItems);
+      });
 
-      const { data: order, error: orderErr } = await supabase
-        .from("orders")
-        .insert({
-          customer_id: user.id,
-          store_id: sp.store_id,
-          status: "pending",
-          total_amount: grandTotal,
-          delivery_address: address.trim(),
-          payment_method: paymentMethod,
-          notes: notes.trim() || null,
-        })
-        .select()
-        .single();
+      if (itemsByStore.size === 0) {
+        throw new Error("No valid items to order");
+      }
 
-      if (orderErr || !order) throw new Error(orderErr?.message ?? "Order creation failed.");
+      // Create a separate order for EACH store
+      for (const [storeId, storeItems] of itemsByStore.entries()) {
+        const storeTotal = storeItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const storeName = storeItems[0]?.store_name || "Unknown Store";
+        const storeDeliveryFee = isMultiStore ? deliveryFee / itemsByStore.size : deliveryFee;
 
-      const { error: itemsErr } = await supabase.from("order_items").insert(
-        items.map((item) => ({
-          order_id: order.id,
-          store_product_id: item.store_product_id,
-          quantity: item.quantity,
-          unit_price: item.price,
-        }))
-      );
-
-      if (itemsErr) throw new Error(itemsErr.message);
-
-      await Promise.all(
-        items.map((item) =>
-          supabase.rpc("decrement_stock", {
-            p_store_product_id: item.store_product_id,
-            p_quantity: item.quantity,
+        const { data: order, error: orderErr } = await supabase
+          .from("orders")
+          .insert({
+            customer_id: user.id,
+            store_id: storeId,
+            status: "pending",
+            total_amount: storeTotal + storeDeliveryFee,
+            delivery_address: address.trim(),
+            payment_method: paymentMethod,
+            notes: notes.trim() || null,
           })
-        )
-      );
+          .select()
+          .single();
 
-      await clearCart();
-      setPlacedOrderId(order.id);
+        if (orderErr || !order) {
+          throw new Error(orderErr?.message ?? `Failed to create order for ${storeName}`);
+        }
+
+        const { error: itemsErr } = await supabase
+          .from("order_items")
+          .insert(
+            storeItems.map((item) => ({
+              order_id: order.id,
+              store_product_id: item.store_product_id,
+              quantity: item.quantity,
+              unit_price: item.price,
+            }))
+          );
+
+        if (itemsErr) {
+          throw new Error(`Failed to add items for order from ${storeName}: ${itemsErr.message}`);
+        }
+
+        // Decrement stock (non-fatal — log failures but don't abort)
+        const stockResults = await Promise.allSettled(
+          storeItems.map((item) =>
+            supabase.rpc("decrement_stock", {
+              p_store_product_id: item.store_product_id,
+              p_quantity: item.quantity,
+            })
+          )
+        );
+        stockResults.forEach((result, index) => {
+          if (result.status === "rejected") {
+            logger.error(`Stock decrement failed for ${storeItems[index].store_product_id}:`, result.reason);
+          }
+        });
+
+        createdOrderIds.push(order.id);
+      }
+
+      // Clear only the items that were ordered
+      if (store_id) {
+        await clearStoreItems(store_id);
+      } else {
+        for (const storeId of itemsByStore.keys()) {
+          await clearStoreItems(storeId);
+        }
+      }
+
+      setPlacedOrders(createdOrderIds);
       setStep(4);
     } catch (err: any) {
       logger.error("Checkout error:", err);
@@ -259,38 +317,44 @@ export default function CheckoutScreen() {
   if (step === 4) {
     return (
       <AppScreen>
-        <View style={styles.successContainer}>
+        <ScrollView contentContainerStyle={styles.successContainer}>
           <View style={[styles.successIcon, { backgroundColor: theme.primary + "15" }]}>
             <CheckCircle2 size={64} color={theme.primary} />
           </View>
-          <Text style={[styles.successTitle, { color: theme.textPrimary }]}>Order Placed!</Text>
-          <Text style={[styles.successSub, { color: theme.textSecondary }]}>
-            Your order has been placed successfully. The seller will confirm it shortly.
+          <Text style={[styles.successTitle, { color: theme.textPrimary }]}>
+            {placedOrders.length > 1 ? `${placedOrders.length} Orders Placed!` : "Order Placed!"}
           </Text>
-          {placedOrderId && (
+          <Text style={[styles.successSub, { color: theme.textSecondary }]}>
+            {placedOrders.length > 1
+              ? "Your orders have been placed successfully. Each store will confirm their order separately."
+              : "Your order has been placed successfully. The seller will confirm it shortly."}
+          </Text>
+          {placedOrders.map((orderId, index) => (
             <TouchableOpacity
+              key={orderId}
               style={[styles.fullWidthPrimaryBtn, { backgroundColor: theme.primary }]}
               onPress={() => {
-                const orderId = placedOrderId;
                 setStep(1);
-                setPlacedOrderId(null);
+                setPlacedOrders([]);
                 router.push(`/(customer)/order/${orderId}`);
               }}
             >
-              <Text style={styles.primaryBtnText}>Track Your Order</Text>
+              <Text style={styles.primaryBtnText}>
+                {placedOrders.length > 1 ? `Track Order #${index + 1}` : "Track Your Order"}
+              </Text>
             </TouchableOpacity>
-          )}
+          ))}
           <TouchableOpacity
             style={[styles.fullWidthSecondaryBtn, { borderColor: theme.border }]}
             onPress={() => {
               setStep(1);
-              setPlacedOrderId(null);
+              setPlacedOrders([]);
               router.replace("/(customer)");
             }}
           >
             <Text style={[styles.secondaryBtnText, { color: theme.textSecondary }]}>Back to Home</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </AppScreen>
     );
   }

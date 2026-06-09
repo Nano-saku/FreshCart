@@ -7,7 +7,7 @@ import { memo, useState, useRef, useMemo } from "react";
 import { useCartStore } from "../stores/cartStore";
 import { useTheme } from "../contexts/ThemeContext";
 import { router } from "expo-router";
-import { Plus, ShoppingCart } from "lucide-react-native";
+import { Plus, ShoppingCart, Check, AlertCircle } from "lucide-react-native";
 import { logger } from "../lib/logger";
 
 const CURRENCY = "₱";
@@ -15,26 +15,57 @@ const CURRENCY = "₱";
 export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
   const { theme } = useTheme();
   const addItem = useCartStore((s) => s.addItem);
+  const hasMultipleStores = useCartStore((s) => s.hasMultipleStores);
   const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  const [showStoreWarning, setShowStoreWarning] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const handleAdd = async () => {
+  const handleAdd = async (e?: any) => {
+    if (e) e.stopPropagation();
+    
     setAdding(true);
+    
+    // Button press animation
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.92, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { 
+        toValue: 0.9, 
+        duration: 80, 
+        useNativeDriver: true 
+      }),
+      Animated.timing(scaleAnim, { 
+        toValue: 1, 
+        duration: 120, 
+        useNativeDriver: true 
+      }),
     ]).start();
+    
     try {
       await addItem(item.id, 1);
+      setAdded(true);
+      
+      // Check if we now have items from multiple stores
+      if (hasMultipleStores()) {
+        setShowStoreWarning(true);
+      }
+      
+      setTimeout(() => {
+        setAdded(false);
+        setShowStoreWarning(false);
+      }, 2000);
     } catch (err) {
       logger.error("Add to cart error:", err);
     } finally {
-      setTimeout(() => setAdding(false), 800);
+      setTimeout(() => setAdding(false), 300);
     }
   };
 
+  // Safe extraction with fallbacks
   const product = item.product || {};
+  const productName = product.name || item.name || "Unknown Product";
+  const productImage = product.image_url || item.image_url || null;
+  const productUnit = product.unit || item.unit || "piece";
   const price = item.price ?? 0;
   const stockQty = item.stock_qty ?? 0;
   const outOfStock = stockQty <= 0;
@@ -42,22 +73,27 @@ export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => router.push(`/(customer)/product/${item.id}`)}
+      onPress={() => {
+        // Navigate with store_product ID (item.id)
+        router.push(`/(customer)/product/${item.id}`);
+      }}
       activeOpacity={0.9}
     >
       {/* Image */}
       <View style={styles.imageContainer}>
-        {product.image_url
-          ? <Image
-            source={{ uri: product.image_url }}
+        {productImage ? (
+          <Image
+            source={{ uri: productImage }}
             style={styles.image}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
           />
-          : <View style={styles.imagePlaceholder}>
+        ) : (
+          <View style={styles.imagePlaceholder}>
             <ShoppingCart size={32} color={theme.textMuted} />
-          </View>}
+          </View>
+        )}
 
         {/* Out of stock overlay */}
         {outOfStock && (
@@ -66,10 +102,18 @@ export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
           </View>
         )}
 
-        {/* Low stock badge — only when real */}
+        {/* Low stock badge */}
         {stockQty <= 5 && stockQty > 0 && (
           <View style={[styles.stockBadge, { backgroundColor: theme.warning }]}>
             <Text style={styles.stockBadgeText}>Only {stockQty} left</Text>
+          </View>
+        )}
+        
+        {/* Store warning badge */}
+        {showStoreWarning && (
+          <View style={[styles.storeWarningBadge, { backgroundColor: theme.warning }]}>
+            <AlertCircle size={12} color="#fff" />
+            <Text style={styles.storeWarningText}>Multiple stores</Text>
           </View>
         )}
       </View>
@@ -77,9 +121,9 @@ export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
       {/* Content */}
       <View style={styles.content}>
         <Text style={[styles.name, { color: theme.textPrimary }]} numberOfLines={1}>
-          {product.name || "Unknown Product"}
+          {productName}
         </Text>
-        <Text style={[styles.unit, { color: theme.textMuted }]}>{product.unit || "piece"}</Text>
+        <Text style={[styles.unit, { color: theme.textMuted }]}>{productUnit}</Text>
 
         <View style={styles.footer}>
           <Text style={[styles.price, { color: theme.primary }]}>
@@ -90,15 +134,25 @@ export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
             <TouchableOpacity
               style={[
                 styles.addBtn,
-                { backgroundColor: outOfStock ? theme.border : theme.primary },
-                adding && { backgroundColor: theme.primaryDark },
+                { 
+                  backgroundColor: added 
+                    ? "#4CAF50" // success color
+                    : outOfStock 
+                      ? theme.border 
+                      : theme.primary 
+                },
+                adding && styles.addBtnActive,
               ]}
-              onPress={(e) => { e.stopPropagation(); handleAdd(); }}
-              disabled={adding || outOfStock}
+              onPress={handleAdd}
+              disabled={adding || outOfStock || added}
             >
-              {adding
-                ? <ShoppingCart size={16} color="#fff" />
-                : <Plus size={18} color="#fff" />}
+              {added ? (
+                <Check size={18} color="#fff" />
+              ) : adding ? (
+                <ShoppingCart size={16} color="#fff" />
+              ) : (
+                <Plus size={18} color="#fff" />
+              )}
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -107,19 +161,104 @@ export const ProductCard = memo(function ProductCard({ item }: { item: any }) {
   );
 });
 
-const createStyles = (theme: typeof import("../constants/colors").lightTheme) => StyleSheet.create({
-  card: { flex: 1, margin: 6, borderRadius: 16, backgroundColor: theme.surface, overflow: "hidden", shadowColor: theme.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8, elevation: 3 },
-  imageContainer: { position: "relative", width: "100%", height: 140, backgroundColor: theme.surfaceVariant },
-  image: { width: "100%", height: "100%", resizeMode: "cover" },
-  imagePlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
-  outOfStockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" },
-  outOfStockText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  stockBadge: { position: "absolute", bottom: 6, left: 6, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  stockBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  content: { padding: 12 },
-  name: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
-  unit: { fontSize: 12, marginBottom: 8 },
-  footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  price: { fontSize: 16, fontWeight: "700" },
-  addBtn: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+const createStyles = (theme: any) => StyleSheet.create({
+  card: { 
+    flex: 1, 
+    margin: 6, 
+    borderRadius: 16, 
+    backgroundColor: theme.surface, 
+    overflow: "hidden", 
+    shadowColor: theme.shadowColor, 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 8, 
+    elevation: 3 
+  },
+  imageContainer: { 
+    position: "relative", 
+    width: "100%", 
+    height: 140, 
+    backgroundColor: theme.surfaceVariant 
+  },
+  image: { 
+    width: "100%", 
+    height: "100%" 
+  },
+  imagePlaceholder: { 
+    width: "100%", 
+    height: "100%", 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  outOfStockOverlay: { 
+    ...StyleSheet.absoluteFillObject, 
+    backgroundColor: "rgba(0,0,0,0.45)", 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  outOfStockText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    fontSize: 12 
+  },
+  stockBadge: { 
+    position: "absolute", 
+    bottom: 6, 
+    left: 6, 
+    paddingHorizontal: 8, 
+    paddingVertical: 3, 
+    borderRadius: 8 
+  },
+  stockBadgeText: { 
+    color: "#fff", 
+    fontSize: 10, 
+    fontWeight: "700" 
+  },
+  storeWarningBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  storeWarningText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  content: { 
+    padding: 12 
+  },
+  name: { 
+    fontSize: 14, 
+    fontWeight: "600", 
+    marginBottom: 2 
+  },
+  unit: { 
+    fontSize: 12, 
+    marginBottom: 8 
+  },
+  footer: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center" 
+  },
+  price: { 
+    fontSize: 16, 
+    fontWeight: "700" 
+  },
+  addBtn: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 12, 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  addBtnActive: {
+    transform: [{ scale: 0.95 }],
+  },
 });

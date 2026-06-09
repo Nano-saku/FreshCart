@@ -21,6 +21,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useImageUpload } from "../../src/hooks/useImageUpload";
 import { useMemo } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
+import { GeocodingService } from "../../src/services/geocoding";
 
 export default function StoreSettings() {
   const { profile } = useAuthStore();
@@ -44,6 +45,7 @@ export default function StoreSettings() {
   });
 
   const { uploadImage, uploading } = useImageUpload("images");
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const fetchStore = async () => {
     setLoading(true);
@@ -94,6 +96,30 @@ export default function StoreSettings() {
     const url = await uploadImage(source, "stores");
     if (url) {
       setForm((prev) => ({ ...prev, logo_url: url }));
+    }
+  };
+
+  // Geocode the manually typed address and fill lat/lng
+  const geocodeTypedAddress = async () => {
+    if (!form.address.trim()) return;
+    setIsGeocoding(true);
+    try {
+      const coords = await GeocodingService.addressToCoordinates(form.address);
+      if (coords) {
+        setForm((f) => ({
+          ...f,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        }));
+        Alert.alert("Location Found", `Coordinates set:
+${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
+      } else {
+        Alert.alert("Not Found", "Could not find coordinates for that address. Try being more specific, or use the map picker.");
+      }
+    } catch (err) {
+      Alert.alert("Error", "Geocoding failed. Please check your connection.");
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
@@ -217,7 +243,7 @@ export default function StoreSettings() {
             </Text>
           </TouchableOpacity>
 
-          {/* Address input */}
+          {/* Address input + inline geocode button */}
           <View style={styles.addressContainer}>
             <MapPin size={20} color={theme.textMuted} style={styles.addressIcon} />
             <TextInput
@@ -228,6 +254,38 @@ export default function StoreSettings() {
               placeholderTextColor={theme.textMuted}
             />
           </View>
+
+          {/* Geocode button — only shown when address typed but no coords yet, or to re-geocode */}
+          {form.address.trim().length > 5 && (
+            <TouchableOpacity
+              style={[
+                styles.geocodeBtn,
+                {
+                  backgroundColor: form.latitude
+                    ? theme.primary + "10"
+                    : theme.primary,
+                  borderColor: theme.primary,
+                },
+              ]}
+              onPress={geocodeTypedAddress}
+              disabled={isGeocoding}
+            >
+              {isGeocoding ? (
+                <ActivityIndicator size="small" color={form.latitude ? theme.primary : "#fff"} />
+              ) : (
+                <Text
+                  style={[
+                    styles.geocodeBtnText,
+                    { color: form.latitude ? theme.primary : "#fff" },
+                  ]}
+                >
+                  {form.latitude
+                    ? `📍 Coords set (${form.latitude?.toFixed(4)}, ${form.longitude?.toFixed(4)}) — Refresh`
+                    : "📍 Get Coordinates from Address"}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           {store && (
             <TouchableOpacity
@@ -430,6 +488,21 @@ const createStyles = (theme: any) => StyleSheet.create({
     color: theme.textPrimary,
     fontSize: 16,
     fontWeight: "500",
+  },
+  geocodeBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    flexDirection: "row",
+    gap: 8,
+  },
+  geocodeBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   saveBtn: {
     backgroundColor: theme.primary,

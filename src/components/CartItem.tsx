@@ -43,10 +43,10 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
           <Text style={styles.itemUnit}>{item.product.unit}</Text>
           <View style={styles.priceRow}>
             <Text style={styles.itemPrice}>
-              ${(item.price * item.quantity).toFixed(2)}
+              ₱{(item.price * item.quantity).toFixed(2)}
             </Text>
             <Text style={styles.unitPrice}>
-              ${item.price.toFixed(2)} each
+              ₱{item.price.toFixed(2)} each
             </Text>
           </View>
         </View>

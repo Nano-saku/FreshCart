@@ -124,6 +124,10 @@ export default function AdminOrdersScreen() {
             />
           }
           renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => router.push(`/(seller)/(order)/${item.id}`)}
+            >
             <BlurView intensity={30} tint="light" style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={styles.row}>
@@ -172,6 +176,7 @@ export default function AdminOrdersScreen() {
                 </View>
               </View>
             </BlurView>
+            </TouchableOpacity>
           )}
         />
       )}
